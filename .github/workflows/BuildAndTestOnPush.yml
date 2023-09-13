@@ -12,31 +12,26 @@ defaults:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    strategy:
+       matrix:
+         toolchain: [stable, beta, nightly]
+         os: [ubuntu-latest, windows-latest, macOS-latest]
+         
+    runs-on: ${{ matrix.os }}
+  
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Set up Rust
+      - name: Set up rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
-          
-      - name: Install Windows target
-        run: rustup target add x86_64-pc-windows-msvc
+          toolchain: ${{ matrix.toolchain }}
+      - name: Update toolchain
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
-      - name: Install MacOS target
-        run: rustup target add x86_64-apple-darwin
-
-      - name: Build for Linux
-        run: cargo build --release --target x86_64-unknown-linux-gnu
-
-      - name: Build for Windows
-        run: cargo build --release --target x86_64-pc-windows-msvc
-
-      - name: Build for macOS
-        run: cargo build --release --target x86_64-apple-darwin
+      - name: Build for ${{ matrix.os }}
+        run: cargo build --release
 
       - name: Run Tests
         run: cargo test
