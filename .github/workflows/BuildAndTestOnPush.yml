@@ -20,16 +20,16 @@ jobs:
           toolchain: stable
 
       - name: Build for Linux
-        run: cargo build --release --target x86_64-unknown-linux-gnu
+        run: cargo build ./Sources --release --target x86_64-unknown-linux-gnu
 
       - name: Build for Windows
-        run: cargo build --release --target x86_64-pc-windows-msvc
+        run: cargo build ./Sources --release --target x86_64-pc-windows-msvc
 
       - name: Build for macOS
-        run: cargo build --release --target x86_64-apple-darwin
+        run: cargo build ./Sources --release --target x86_64-apple-darwin
 
       - name: Run Tests
-        run: cargo test
+        run: cargo test ./Sources
 
       - name: Run Tests with Comment Coverage
         run: cargo install cargo-kcov && cargo kcov -- --verify --exclude-pattern=/.cargo,/usr/lib --include-pattern=src/ --comment-coverage
