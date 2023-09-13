@@ -6,6 +6,10 @@ on:
       - develop
       - feat/**
 
+defaults:
+  run:
+    working-directory: Sources
+
 jobs:
   build:
     runs-on: ubuntu-latest
