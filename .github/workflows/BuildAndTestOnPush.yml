@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - develop
+      - feat/**
+    branches-ignore:
+      - main
 
 jobs:
   build:
