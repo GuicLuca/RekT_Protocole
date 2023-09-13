@@ -38,17 +38,3 @@ jobs:
 
       - name: Run Tests with Comment Coverage
         run: cargo install cargo-kcov && cargo kcov -- --verify --exclude-pattern=/.cargo,/usr/lib --include-pattern=src/ --comment-coverage
-
-      - name: Get Comment Coverage
-        id: comment_coverage
-        run: |
-          const fs = require('fs');
-          const coverage = fs.readFileSync('target/cov/coverage.json', 'utf8');
-          const json = JSON.parse(coverage);
-          const commentCoverage = json.comment_coverage.toFixed(2);
-
-          echo "::set-output name=comment_coverage::${commentCoverage}"
-
-      - name: Display Comment Coverage
-        run: |
-          echo "Comment Coverage: ${{ steps.comment_coverage.outputs.comment_coverage }}%"
