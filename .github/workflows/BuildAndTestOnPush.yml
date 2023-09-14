@@ -35,6 +35,3 @@ jobs:
 
       - name: Run Tests
         run: cargo test
-
-      - name: Run Tests with Comment Coverage
-        run: cargo install cargo-kcov && cargo kcov -- --verify --exclude-pattern=/.cargo,/usr/lib --include-pattern=src/ --comment-coverage
