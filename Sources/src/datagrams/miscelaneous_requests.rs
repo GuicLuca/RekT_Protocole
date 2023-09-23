@@ -61,7 +61,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgServerStatusACK {
         let connected_client = get_u64_at_pos(buffer,1)?;
         Ok(DtgServerStatusACK {
             datagram_type: DatagramType::from(buffer[0]),
-            connected_client,
+            connected_client
         })
     }
 }
