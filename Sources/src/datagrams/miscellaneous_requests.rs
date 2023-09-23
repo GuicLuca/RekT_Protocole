@@ -28,16 +28,18 @@ impl From<&[u8]> for DtgServerStatus {
         }
     }
 }
+
 //===== Sent to answer a ServerStatus request
 pub struct DtgServerStatusACK {
     pub datagram_type: DatagramType,
     pub connected_client: ClientId, // Amount of connected client. It use the same type as client_id to ensure sufficient capacity
 }
+
 impl DtgServerStatusACK {
     pub const fn new(nb_client: ClientId) -> DtgServerStatusACK {
         DtgServerStatusACK {
             datagram_type: DatagramType::ServerStatusAck,
-            connected_client: nb_client
+            connected_client: nb_client,
         }
     }
 
@@ -54,14 +56,14 @@ impl DtgServerStatusACK {
 impl<'a> TryFrom<&'a [u8]> for DtgServerStatusACK {
     type Error = &'a str;
 
-    fn try_from(buffer: &'a[u8]) -> Result<Self, Self::Error> {
+    fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
         if buffer.len() < 10 {
             return Err("Payload len is to short for a DtgServerStatusACK.");
         }
-        let connected_client = get_u64_at_pos(buffer,1)?;
+        let connected_client = get_u64_at_pos(buffer, 1)?;
         Ok(DtgServerStatusACK {
             datagram_type: DatagramType::from(buffer[0]),
-            connected_client
+            connected_client,
         })
     }
 }

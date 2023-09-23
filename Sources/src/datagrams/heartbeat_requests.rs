@@ -4,6 +4,7 @@ use crate::enums::datagram_type::DatagramType;
 pub struct DtgHeartbeat {
     pub datagram_type: DatagramType,
 }
+
 impl DtgHeartbeat {
     pub const fn new() -> DtgHeartbeat {
         DtgHeartbeat {
@@ -17,7 +18,7 @@ impl DtgHeartbeat {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for DtgHeartbeat{
+impl<'a> TryFrom<&'a [u8]> for DtgHeartbeat {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
@@ -36,6 +37,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgHeartbeat{
 pub struct DtgHeartbeatRequest {
     pub datagram_type: DatagramType,
 }
+
 impl DtgHeartbeatRequest {
     pub const fn new() -> DtgHeartbeatRequest {
         DtgHeartbeatRequest {
@@ -48,7 +50,8 @@ impl DtgHeartbeatRequest {
         return [u8::from(self.datagram_type)].into();
     }
 }
-impl<'a> TryFrom<&'a [u8]> for DtgHeartbeatRequest{
+
+impl<'a> TryFrom<&'a [u8]> for DtgHeartbeatRequest {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {

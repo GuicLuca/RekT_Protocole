@@ -99,7 +99,7 @@ impl DtgConnectNack {
         DtgConnectNack {
             datagram_type: DatagramType::ConnectNack,
             size: message_size,
-            payload: reason
+            payload: reason,
         }
     }
 

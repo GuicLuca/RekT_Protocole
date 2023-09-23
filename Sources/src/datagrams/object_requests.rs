@@ -6,17 +6,18 @@ use crate::libs::types::{ObjectId, Size};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos, u8_to_vec_be};
 
 //===== Sent to acknowledge a TOPIC_REQUEST
-pub struct DtgObjectRequest{
+pub struct DtgObjectRequest {
     pub datagram_type: DatagramType,
     pub flag: ObjectRequestAction,
     pub size: Size,
     pub object_id: ObjectId,
-    pub payload: HashSet<u64>
+    pub payload: HashSet<u64>,
 }
+
 impl DtgObjectRequest {
-    pub fn new(flag: ObjectRequestAction, object_id: u64, topics: HashSet<u64>)-> DtgObjectRequest {
+    pub fn new(flag: ObjectRequestAction, object_id: u64, topics: HashSet<u64>) -> DtgObjectRequest {
         let size: u16 = (topics.len() * size_of::<u64>()) as u16; // x = size_of(topics)
-        DtgObjectRequest{
+        DtgObjectRequest {
             datagram_type: DatagramType::ObjectRequest,
             flag,
             size,
@@ -43,7 +44,7 @@ impl DtgObjectRequest {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest{
+impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
@@ -61,11 +62,11 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest{
                     u64::from_le_bytes(chunk.try_into().unwrap())
                 })
                 .collect();
-        }else{
+        } else {
             topics = HashSet::default();
         }
 
-        let object_id = get_u64_at_pos(buffer,4)?;
+        let object_id = get_u64_at_pos(buffer, 4)?;
 
         Ok(DtgObjectRequest {
             datagram_type: DatagramType::from(buffer[0]),
@@ -78,19 +79,21 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest{
 }
 
 //===== Sent to acknowledge a OBJECT_REQUEST create
-pub struct DtgObjectRequestACK{
+pub struct DtgObjectRequestACK {
     pub datagram_type: DatagramType,
-    pub flag: u8, // Bit field SXXX XDMC (S: Success/fail, X: Unused, D: delete, M : modify, C: Create)
+    pub flag: u8,
+    // Bit field SXXX XDMC (S: Success/fail, X: Unused, D: delete, M : modify, C: Create)
     pub object_id: u64,
-    pub final_object_id: Option<u64>
+    pub final_object_id: Option<u64>,
 }
+
 impl DtgObjectRequestACK {
-    pub fn new(flag: u8, object_id: u64, final_object_id: Option<u64>)-> DtgObjectRequestACK {
-        DtgObjectRequestACK{
+    pub fn new(flag: u8, object_id: u64, final_object_id: Option<u64>) -> DtgObjectRequestACK {
+        DtgObjectRequestACK {
             datagram_type: DatagramType::ObjectRequestAck,
             flag,
             object_id,
-            final_object_id
+            final_object_id,
         }
     }
 
@@ -100,7 +103,7 @@ impl DtgObjectRequestACK {
 
         if self.final_object_id.is_some() {
             bytes = Vec::with_capacity(18);
-        }else {
+        } else {
             bytes = Vec::with_capacity(10);
         }
 
@@ -109,7 +112,7 @@ impl DtgObjectRequestACK {
         bytes.extend(self.object_id.to_le_bytes());
 
         match self.final_object_id {
-            None => {},
+            None => {}
             Some(final_object_id) => bytes.extend(final_object_id.to_le_bytes()),
         }
 
@@ -117,18 +120,18 @@ impl DtgObjectRequestACK {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK{
+impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
         if buffer.len() < 18 {
             return Err("Payload len is to short for a DtgObjectRequestACK.");
         }
-        let object_id = get_u64_at_pos(buffer,2)?;
+        let object_id = get_u64_at_pos(buffer, 2)?;
         let mut final_object_id = None;
 
         if u8_to_vec_be(buffer[1])[7] == 1 {
-            final_object_id = Some(get_u64_at_pos(buffer,10)?);
+            final_object_id = Some(get_u64_at_pos(buffer, 10)?);
         }
 
         Ok(DtgObjectRequestACK {
@@ -142,22 +145,24 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK{
 
 
 // ===== Sent in case of error for all action (Create update delete)
-pub struct DtgObjectRequestNACK{
+pub struct DtgObjectRequestNACK {
     pub datagram_type: DatagramType,
-    pub flag: u8, // Bit field SXXA UDMC (S: Success/fail, X: Unused, D: delete, M : modify, C: Create, A : subscribe, U, Unsubscribe)
+    pub flag: u8,
+    // Bit field SXXA UDMC (S: Success/fail, X: Unused, D: delete, M : modify, C: Create, A : subscribe, U, Unsubscribe)
     pub size: Size,
     pub object_id: u64,
-    pub payload: Vec<u8>
+    pub payload: Vec<u8>,
 }
+
 impl DtgObjectRequestNACK {
-    pub fn new(flag: u8, object_id: u64, reason: &str)-> DtgObjectRequestNACK {
+    pub fn new(flag: u8, object_id: u64, reason: &str) -> DtgObjectRequestNACK {
         let reason_vec: Vec<u8> = reason.as_bytes().into();
-        DtgObjectRequestNACK{
+        DtgObjectRequestNACK {
             datagram_type: DatagramType::ObjectRequestNack,
             flag,
             size: reason_vec.len() as Size,
             object_id,
-            payload: reason_vec
+            payload: reason_vec,
         }
     }
 
@@ -174,22 +179,22 @@ impl DtgObjectRequestNACK {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestNACK{
+impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestNACK {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
         if buffer.len() < 12 {
             return Err("Payload len is to short for a DtgObjectRequestNACK.");
         }
-        let size = get_u16_at_pos(buffer,2)?;
-        let object_id = get_u64_at_pos(buffer,4)?;
+        let size = get_u16_at_pos(buffer, 2)?;
+        let object_id = get_u64_at_pos(buffer, 4)?;
 
         Ok(DtgObjectRequestNACK {
             datagram_type: DatagramType::from(buffer[0]),
             flag: buffer[1],
             size,
             object_id,
-            payload: get_bytes_from_slice(buffer, 12, (size + 12) as usize)
+            payload: get_bytes_from_slice(buffer, 12, (size + 12) as usize),
         })
     }
 }

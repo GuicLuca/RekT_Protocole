@@ -11,7 +11,7 @@ impl DtgPing {
     pub const fn new(ping_id: PingId) -> DtgPing {
         DtgPing {
             datagram_type: DatagramType::Ping,
-            ping_id
+            ping_id,
         }
     }
 
@@ -24,7 +24,7 @@ impl DtgPing {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for DtgPing{
+impl<'a> TryFrom<&'a [u8]> for DtgPing {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
@@ -34,7 +34,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgPing{
 
         Ok(DtgPing {
             datagram_type: DatagramType::from(buffer[0]),
-            ping_id: buffer[1]
+            ping_id: buffer[1],
         })
     }
 }
@@ -59,7 +59,7 @@ impl DtgPong {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for DtgPong{
+impl<'a> TryFrom<&'a [u8]> for DtgPong {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
@@ -69,7 +69,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgPong{
 
         Ok(DtgPong {
             datagram_type: DatagramType::from(buffer[0]),
-            ping_id: buffer[1]
+            ping_id: buffer[1],
         })
     }
 }

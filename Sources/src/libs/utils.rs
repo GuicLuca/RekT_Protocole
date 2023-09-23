@@ -22,7 +22,7 @@ use crate::libs::types::TopicId;
 pub fn get_bytes_from_slice(
     buffer: &[u8],
     from: usize,
-    to: usize
+    to: usize,
 ) -> Vec<u8> {
     // 1 - check bound validity
     match () {
@@ -32,7 +32,7 @@ pub fn get_bytes_from_slice(
     }
 
     // 2 - return the correct slice
-    buffer[from..to+1].into()
+    buffer[from..to + 1].into()
 }
 
 
@@ -47,12 +47,13 @@ pub fn get_bytes_from_slice(
  */
 pub fn get_u64_at_pos(buffer: &[u8], position: usize) -> Result<u64, &str>
 {
-    let slice = get_bytes_from_slice(buffer, position, position+size_of::<u64>()-1);
+    let slice = get_bytes_from_slice(buffer, position, position + size_of::<u64>() - 1);
     if slice.len() != 8 {
         return Err("Slice len is invalid to convert it into an u64.");
     }
     Ok(u64::from_le_bytes(slice.try_into().unwrap()))
 }
+
 /**
  * This method is an helper to find an u32 at position
  * in a buffer of u8
@@ -64,12 +65,13 @@ pub fn get_u64_at_pos(buffer: &[u8], position: usize) -> Result<u64, &str>
  */
 pub fn get_u32_at_pos(buffer: &[u8], position: usize) -> Result<u32, &str>
 {
-    let slice = get_bytes_from_slice(buffer, position, position+size_of::<u32>()-1);
+    let slice = get_bytes_from_slice(buffer, position, position + size_of::<u32>() - 1);
     if slice.len() != 4 {
         return Err("Slice len is invalid to convert it into an u32.");
     }
     Ok(u32::from_le_bytes(slice.try_into().unwrap()))
 }
+
 /**
  * This method is an helper to find an u16 at position
  * in a buffer of u8
@@ -81,7 +83,7 @@ pub fn get_u32_at_pos(buffer: &[u8], position: usize) -> Result<u32, &str>
  */
 pub fn get_u16_at_pos(buffer: &[u8], position: usize) -> Result<u16, &str>
 {
-    let slice = get_bytes_from_slice(buffer, position, position+size_of::<u16>()-1);
+    let slice = get_bytes_from_slice(buffer, position, position + size_of::<u16>() - 1);
     if slice.len() != 2 {
         return Err("Slice len is invalid to convert it into an u16.");
     }
@@ -112,7 +114,7 @@ pub fn diff_hashsets(new_set: &HashSet<TopicId>, current_set: &HashSet<TopicId>)
  *
  * @return u8
  */
-pub fn vec_to_u8(bitfield: Vec<u8>) -> u8{
+pub fn vec_to_u8(bitfield: Vec<u8>) -> u8 {
     if bitfield.len() != 8 {
         return panic!("Bitfield length is invalid ! It must be exactly 8.");
     }
@@ -127,10 +129,10 @@ pub fn vec_to_u8(bitfield: Vec<u8>) -> u8{
  *
  * @return Vec<u8>, bitfield in big endian
  */
-pub fn u8_to_vec_be(number: u8) -> Vec<u8>{
+pub fn u8_to_vec_be(number: u8) -> Vec<u8> {
     let mut bits = Vec::with_capacity(8);
     for i in 0..8 {
-        bits.push(if (number & (1 << i)) != 0 {1} else {0});
+        bits.push(if (number & (1 << i)) != 0 { 1 } else { 0 });
     }
     bits.reverse();
     bits
