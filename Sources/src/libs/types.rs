@@ -12,16 +12,16 @@ pub type ObjectId = u64; // 0..2 for type identifier (User generated, broker, te
 // ===================
 //    Server types
 // ===================
-/*pub type ServerSocket = Arc<UdpSocket>;
-pub type ClientsHashMap<T> = Arc<RwLock<HashMap<ClientId, T>>>;
-pub type TopicsHashMap<T> = Arc<RwLock<HashMap<TopicId, T>>>;
-pub type PingsHashMap = Arc<Mutex<HashMap<PingId, u128>>>;
-pub type ObjectHashMap<T> = Arc<RwLock<HashMap<ObjectId, T>>>;
-
-
+// pub type ServerSocket = Arc<UdpSocket>;
+// pub type ClientsHashMap<T> = Arc<RwLock<HashMap<ClientId, T>>>;
+// pub type TopicsHashMap<T> = Arc<RwLock<HashMap<TopicId, T>>>;
+// pub type PingsHashMap = Arc<Mutex<HashMap<PingId, u128>>>;
+// pub type ObjectHashMap<T> = Arc<RwLock<HashMap<ObjectId, T>>>;
+//
+//
 // ===================
 //   Clients types
 // ===================
 pub type ClientId = u64;
-pub type Responder<T> = oneshot::Sender<Result<T, Error>>;
-pub type ClientSender = Sender<ClientActions>;*/
+// pub type Responder<T> = oneshot::Sender<Result<T, Error>>;
+// pub type ClientSender = Sender<ClientActions>;

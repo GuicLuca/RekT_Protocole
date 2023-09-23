@@ -118,3 +118,20 @@ pub fn vec_to_u8(bitfield: Vec<u8>) -> u8{
     }
     (bitfield[0] << 7) | (bitfield[1] << 6) | (bitfield[2] << 5) | (bitfield[3] << 4) | (bitfield[4] << 3) | (bitfield[5] << 2) | (bitfield[6] << 1) | (bitfield[7] << 0)
 }
+
+/**
+ * This method return the bitfield image of the
+ * given u8.
+ *
+ * @param number: u8
+ *
+ * @return Vec<u8>, bitfield in big endian
+ */
+pub fn u8_to_vec_be(number: u8) -> Vec<u8>{
+    let mut bits = Vec::with_capacity(8);
+    for i in 0..8 {
+        bits.push(if (number & (1 << i)) != 0 {1} else {0});
+    }
+    bits.reverse();
+    bits
+}

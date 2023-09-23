@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::libs::types::TopicId;
-use crate::libs::utils::{diff_hashsets, get_bytes_from_slice, get_u16_at_pos, get_u32_at_pos, get_u64_at_pos, vec_to_u8};
+use crate::libs::utils::{diff_hashsets, get_bytes_from_slice, get_u16_at_pos, get_u32_at_pos, get_u64_at_pos, u8_to_vec_be, vec_to_u8};
 
 // ------------------------------------------------
 //    Workflow test
@@ -54,6 +54,13 @@ fn test_vec_to_u8() {
     let vector3: Vec<u8> = vec!(0,0,0,0,0,1,0,1);
 
     assert_eq!(u8::MAX, vec_to_u8(vector));
-    assert_eq!(191 as u8, vec_to_u8(vector2));
-    assert_eq!(5 as u8, vec_to_u8(vector3));
+    assert_eq!(191u8, vec_to_u8(vector2));
+    assert_eq!(5u8, vec_to_u8(vector3));
+}
+
+#[test]
+fn test_u8_to_vec() {
+    assert_eq!(vec![1,0,0,0,0,0,0,0], u8_to_vec_be(128));
+    assert_eq!(vec![1,1,1,1,1,1,1,1], u8_to_vec_be(u8::MAX));
+    assert_eq!(vec![0,0,0,0,0,0,0,1], u8_to_vec_be(1));
 }
