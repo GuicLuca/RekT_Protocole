@@ -57,7 +57,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgServerStatusACK {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 10 {
+        if buffer.len() < 9 {
             return Err("Payload len is to short for a DtgServerStatusACK.");
         }
         let connected_client = get_u64_at_pos(buffer, 1)?;
