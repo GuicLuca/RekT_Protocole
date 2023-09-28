@@ -1,7 +1,7 @@
 /**
  * ObjectRequestAction are all possible action in OBJECT_REQUEST datagram.
  */
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
 pub enum ObjectRequestAction {
     Create,

@@ -4,7 +4,7 @@
  * DatagramType are used to translate request type
  * to the corresponding hexadecimal code.
  */
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
 pub enum DatagramType {
     Connect,
@@ -117,7 +117,7 @@ impl From<DatagramType> for u8 {
             DatagramType::TopicRequestAck => 0x05,
             DatagramType::TopicRequestNack => 0x15,
             DatagramType::ObjectRequest => 0x48,
-            DatagramType::ObjectRequestAck => 0x88,
+            DatagramType::ObjectRequestAck => 0x08,
             DatagramType::ObjectRequestNack => 0x18,
             DatagramType::Data => 0x42,
             DatagramType::Unknown => 0xAA,

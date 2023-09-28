@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::mem::size_of;
 use crate::enums::datagram_type::DatagramType;
 use crate::enums::object_request_action::ObjectRequestAction;
-use crate::libs::types::{ObjectId, Size};
+use crate::libs::types::{ObjectId, Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos, u8_to_vec_be};
 
 //===== Sent to acknowledge a TOPIC_REQUEST
@@ -11,12 +11,12 @@ pub struct DtgObjectRequest {
     pub flag: ObjectRequestAction,
     pub size: Size,
     pub object_id: ObjectId,
-    pub payload: HashSet<u64>,
+    pub payload: HashSet<TopicId>,
 }
 
 impl DtgObjectRequest {
-    pub fn new(flag: ObjectRequestAction, object_id: u64, topics: HashSet<u64>) -> DtgObjectRequest {
-        let size: u16 = (topics.len() * size_of::<u64>()) as u16; // x = size_of(topics)
+    pub fn new(flag: ObjectRequestAction, object_id: u64, topics: HashSet<TopicId>) -> DtgObjectRequest {
+        let size: u16 = (topics.len() * size_of::<TopicId>()) as Size; // x = size_of(topics)
         DtgObjectRequest {
             datagram_type: DatagramType::ObjectRequest,
             flag,
@@ -55,7 +55,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
 
         let mut topics: HashSet<u64>;
         if size != 0 {
-            topics = get_bytes_from_slice(buffer, 12, (size as usize + 12))
+            topics = get_bytes_from_slice(buffer, 12, (size-1 + 12) as usize )
                 // Convert the bytes vector to a vector of topics id by grouping u8 into u64
                 .chunks_exact(8)
                 .map(|chunk| {
@@ -81,14 +81,13 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
 //===== Sent to acknowledge a OBJECT_REQUEST create
 pub struct DtgObjectRequestACK {
     pub datagram_type: DatagramType,
-    pub flag: u8,
-    // Bit field SXXX XDMC (S: Success/fail, X: Unused, D: delete, M : modify, C: Create)
+    pub flag: u8, // Bit field XXXA UDMC (X: Unused, D: delete, M : modify, C: Create, A: subscribe, U: unsubscribe)
     pub object_id: u64,
     pub final_object_id: Option<u64>,
 }
 
 impl DtgObjectRequestACK {
-    pub fn new(flag: u8, object_id: u64, final_object_id: Option<u64>) -> DtgObjectRequestACK {
+    pub fn new(flag: u8, object_id: ObjectId, final_object_id: Option<ObjectId>) -> DtgObjectRequestACK {
         DtgObjectRequestACK {
             datagram_type: DatagramType::ObjectRequestAck,
             flag,
@@ -124,7 +123,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 18 {
+        if buffer.len() < 10 {
             return Err("Payload len is to short for a DtgObjectRequestACK.");
         }
         let object_id = get_u64_at_pos(buffer, 2)?;
@@ -147,8 +146,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
 // ===== Sent in case of error for all action (Create update delete)
 pub struct DtgObjectRequestNACK {
     pub datagram_type: DatagramType,
-    pub flag: u8,
-    // Bit field SXXA UDMC (S: Success/fail, X: Unused, D: delete, M : modify, C: Create, A : subscribe, U, Unsubscribe)
+    pub flag: u8, // Bitfield XXXA UDMC (X: Unused, D: delete, M : modify, C: Create, A: subscribe, U: unsubscribe)
     pub size: Size,
     pub object_id: u64,
     pub payload: Vec<u8>,
@@ -171,8 +169,8 @@ impl DtgObjectRequestNACK {
         let mut bytes: Vec<u8> = Vec::with_capacity(12 + self.size as usize);
         bytes.push(u8::from(self.datagram_type));
         bytes.push(u8::from(self.flag));
-        bytes.extend(self.object_id.to_le_bytes());
         bytes.extend(self.size.to_le_bytes());
+        bytes.extend(self.object_id.to_le_bytes());
         bytes.extend(self.payload.iter());
 
         return bytes;
@@ -194,7 +192,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestNACK {
             flag: buffer[1],
             size,
             object_id,
-            payload: get_bytes_from_slice(buffer, 12, (size + 12) as usize),
+            payload: get_bytes_from_slice(buffer, 12, (size-1 + 12) as usize),
         })
     }
 }

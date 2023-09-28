@@ -1,5 +1,5 @@
 use crate::enums::datagram_type::DatagramType;
-use crate::libs::types::Size;
+use crate::libs::types::{Size, TopicId};
 use crate::libs::utils::{get_u16_at_pos, get_u32_at_pos, get_u64_at_pos};
 
 // The datagram data is used to embed a payload to send information through a specific topic
@@ -16,10 +16,10 @@ pub struct DtgData {
 }
 
 impl DtgData {
-    pub fn new(sequence_number: u32, topic_id: u64, payload: Vec<u8>) -> DtgData {
+    pub fn new(sequence_number: u32, topic_id: TopicId, payload: Vec<u8>) -> DtgData {
         DtgData {
             datagram_type: DatagramType::Data,
-            size: payload.len() as u16,
+            size: payload.len() as Size,
             sequence_number,
             topic_id,
             payload,
