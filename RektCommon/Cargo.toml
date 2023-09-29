@@ -17,7 +17,7 @@ keywords = [
     "Masivement-online",
     "broker"
 ]
-categories = ["Network"]
+categories = ["game-development"]
 license = "MIT"
 
 [dependencies]
