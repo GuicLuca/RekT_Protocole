@@ -1,19 +1,19 @@
 use crate::enums::datagram_type::DatagramType;
 use crate::enums::topic_actions::TopicsAction;
 use crate::enums::topics_response::TopicsResponse;
-use crate::libs::types::Size;
+use crate::libs::types::{Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos};
 
 //===== Sent to subscribe/unsubscribe to a topic
 pub struct DtgTopicRequest {
     pub datagram_type: DatagramType, // 1 byte
     pub flag: TopicsAction, // 1 byte
-    pub topic_id: u64, // 8 bytes
+    pub topic_id: TopicId, // 8 bytes
 }
 
 //===== Sent to subscribe a topic
 impl DtgTopicRequest {
-    pub fn new(action: TopicsAction, topic_id: u64) -> DtgTopicRequest {
+    pub fn new(action: TopicsAction, topic_id: TopicId) -> DtgTopicRequest {
         DtgTopicRequest {
             datagram_type: DatagramType::TopicRequest,
             flag: action,
@@ -135,7 +135,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequestNack{
             datagram_type: DatagramType::from(buffer[0]),
             flag: TopicsResponse::from(buffer[1]),
             size,
-            payload: get_bytes_from_slice(buffer, 4, (4 + size) as usize)
+            payload: get_bytes_from_slice(buffer, 4, (4 + size-1) as usize)
         })
     }
 }

@@ -10,10 +10,13 @@ use crate::datagrams::latency_requests::{DtgPing, DtgPong};
 use crate::datagrams::miscellaneous_requests::{DtgServerStatus, DtgServerStatusACK};
 use crate::datagrams::object_requests::{DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK};
 use crate::datagrams::shutdown_request::DtgShutdown;
+use crate::datagrams::topic_request::{DtgTopicRequest, DtgTopicRequestAck, DtgTopicRequestNack};
 use crate::enums::datagram_type::DatagramType;
 use crate::enums::end_connection_reason::EndConnexionReason;
 use crate::enums::end_connection_reason::EndConnexionReason::{Shutdown, TimeOut};
 use crate::enums::object_request_action::ObjectRequestAction;
+use crate::enums::topic_actions::TopicsAction;
+use crate::enums::topics_response::TopicsResponse;
 use crate::libs::types::{ClientId, ObjectId, PingId, Size, TopicId};
 use crate::libs::utils::vec_to_u8;
 
@@ -233,7 +236,6 @@ fn test_DtgData_try_from() {
     }
 }
 
-
 // -------------------------------------------------------
 //   ObjectRequest datagrams
 // -------------------------------------------------------
@@ -360,6 +362,100 @@ fn test_DtgObjectRequestNACK_try_from() {
     let dtg = Arc::from(DtgObjectRequestNACK::new(flag, ObjectId, reason));
     let dtg_ref = dtg.clone().as_bytes();
     let ResultDtg_from = DtgObjectRequestNACK::try_from(&*dtg_ref);
+
+    if ResultDtg_from.is_ok() {
+        assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
+    }else {
+        assert!(false, "dtg_from is invalid");
+    }
+}
+
+// -------------------------------------------------------
+//   TopicRequest datagrams
+// -------------------------------------------------------
+#[test]
+fn test_DtgTopicRequest_as_bytes() {
+    let TopicAction = TopicsAction::Subscribe;
+    let TopicsId = 641635874654 as TopicId;
+
+    let mut bytes: Vec<u8> = Vec::new();
+    bytes.push(u8::from(DatagramType::TopicRequest));
+    bytes.push(u8::from(TopicAction));
+    bytes.extend(TopicsId.to_le_bytes());
+
+    let dtg = DtgTopicRequest::new(TopicAction, TopicsId);
+    assert_eq!(dtg.as_bytes(), bytes);
+}
+
+#[test]
+fn test_DtgOTopicRequest_try_from() {
+    let TopicAction = TopicsAction::Subscribe;
+    let TopicsId = 641635874654 as TopicId;
+
+    let dtg = Arc::from(DtgTopicRequest::new(TopicAction, TopicsId));
+    let dtg_ref = dtg.clone().as_bytes();
+    let ResultDtg_from = DtgTopicRequest::try_from(&*dtg_ref);
+
+    if ResultDtg_from.is_ok() {
+        assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
+    }else {
+        assert!(false, "dtg_from is invalid");
+    }
+}
+
+#[test]
+fn test_DtgTopicRequestACK_as_bytes() {
+    let flag = TopicsResponse::SubFailure;
+    let TopicId = 941636875874654 as TopicId;
+
+    let mut bytes: Vec<u8> = Vec::new();
+    bytes.push(u8::from(DatagramType::TopicRequestAck));
+    bytes.push(u8::from(flag));
+    bytes.extend(TopicId.to_le_bytes());
+
+    let dtg = DtgTopicRequestAck::new(TopicId, flag);
+    assert_eq!(dtg.as_bytes(), bytes);
+}
+
+#[test]
+fn test_DtgTopicRequestACK_try_from() {
+    let flag = TopicsResponse::UnsubSuccess;
+    let TopicId = 321789456398724 as TopicId;
+
+    let dtg = Arc::from(DtgTopicRequestAck::new(TopicId, flag));
+    let dtg_ref = dtg.clone().as_bytes();
+    let ResultDtg_from = DtgTopicRequestAck::try_from(&*dtg_ref);
+
+    if ResultDtg_from.is_ok() {
+        assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
+    }else {
+        assert!(false, "dtg_from is invalid");
+    }
+}
+
+#[test]
+fn test_DtgTopicRequestNACK_as_bytes() {
+    let flag = TopicsResponse::UnsubSuccess;
+    let reason = "Fail to unsubscribe the topic XXX because the id is invalid.";
+
+    let mut bytes: Vec<u8> = Vec::new();
+    bytes.push(u8::from(DatagramType::TopicRequestNack));
+    bytes.push(u8::from(flag));
+    bytes.extend((reason.len() as Size).to_le_bytes());
+    bytes.extend(reason.as_bytes());
+
+    let dtg = DtgTopicRequestNack::new(flag, reason);
+    assert_eq!(dtg.as_bytes(), bytes);
+}
+
+#[test]
+fn test_DtgTopicRequestNACK_try_from() {
+    let flag = TopicsResponse::UnsubSuccess;
+    let reason = "Fail to unsubscribe the topic XXX because the id is invalid.";
+
+    let dtg = Arc::from(DtgTopicRequestNack::new(flag, reason));
+    let dtg_ref = dtg.clone().as_bytes();
+    let ResultDtg_from = DtgTopicRequestNack::try_from(&*dtg_ref);
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
