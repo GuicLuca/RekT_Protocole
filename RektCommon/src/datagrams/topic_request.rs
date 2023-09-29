@@ -52,11 +52,11 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequest{
 pub struct DtgTopicRequestAck {
     pub datagram_type: DatagramType,
     pub flag: TopicsResponse,
-    pub topic_id: u64,
+    pub topic_id: TopicId,
 }
 
 impl DtgTopicRequestAck {
-    pub const fn new(topic_id: u64, status: TopicsResponse) -> DtgTopicRequestAck {
+    pub const fn new(topic_id: TopicId, status: TopicsResponse) -> DtgTopicRequestAck {
         DtgTopicRequestAck {
             datagram_type: DatagramType::TopicRequestAck,
             flag: status,
@@ -101,7 +101,7 @@ pub struct DtgTopicRequestNack {
 impl DtgTopicRequestNack{
 
     pub fn new(status: TopicsResponse, error_message: &str) -> DtgTopicRequestNack {
-        let size = error_message.len() as u16; // string length + 1 for the action
+        let size = error_message.len() as Size; // string length + 1 for the action
         DtgTopicRequestNack {
             datagram_type: DatagramType::TopicRequestNack,
             flag: status,

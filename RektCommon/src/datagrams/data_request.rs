@@ -10,7 +10,7 @@ pub struct DtgData {
     // 2 bytes (u16)
     pub sequence_number: u32,
     // 4 bytes (u32)
-    pub topic_id: u64,
+    pub topic_id: TopicId,
     // 8 bytes (u64)
     pub payload: Vec<u8>, // size bytes
 }

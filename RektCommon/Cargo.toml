@@ -1,0 +1,23 @@
+[package]
+name = "rekt-protocol-common"
+version = "0.1.0"
+edition = "2021"
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE"
+]
+homepage = "https://github.com/GuicLuca/RekT_Protocole/wiki"
+description = "Common lib to use the rekt-protocol. See the crate homepage to check the protocol RFC."
+keywords = [
+    "RekT-protocol",
+    "pub-sub",
+    "Network",
+    "Masivement-online",
+    "broker"
+]
+categories = ["Network"]
+license = "MIT"
+
+[dependencies]

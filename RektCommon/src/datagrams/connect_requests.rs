@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::enums::datagram_type::DatagramType;
-use crate::libs::types::Size;
+use crate::libs::types::{ClientId, Size};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos};
 
 // Sent to the broker to start a connection
@@ -41,12 +41,12 @@ impl<'a> TryFrom<&'a [u8]> for DtgConnect {
 //===== Sent to acknowledge the connexion with success
 pub struct DtgConnectAck {
     pub datagram_type: DatagramType,
-    pub peer_id: u64,
+    pub peer_id: ClientId,
     pub heartbeat_period: u16,
 }
 
 impl DtgConnectAck {
-    pub const fn new(peer_id: u64, heartbeat_period: u16) -> DtgConnectAck {
+    pub const fn new(peer_id: ClientId, heartbeat_period: u16) -> DtgConnectAck {
         DtgConnectAck {
             datagram_type: DatagramType::ConnectAck,
             peer_id,
@@ -94,7 +94,7 @@ pub struct DtgConnectNack {
 impl DtgConnectNack {
     pub fn new(message: &str) -> DtgConnectNack {
         let reason: Vec<u8> = message.as_bytes().into();
-        let message_size = reason.len() as u16;
+        let message_size = reason.len() as Size;
 
         DtgConnectNack {
             datagram_type: DatagramType::ConnectNack,

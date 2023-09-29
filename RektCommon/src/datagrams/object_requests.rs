@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::mem::size_of;
 use crate::enums::datagram_type::DatagramType;
 use crate::enums::object_request_action::ObjectRequestAction;
-use crate::libs::types::{ObjectId, Size, TopicId};
+use crate::libs::types::{Flag, ObjectId, Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos, u8_to_vec_be};
 
 //===== Sent to acknowledge a TOPIC_REQUEST
@@ -15,8 +15,8 @@ pub struct DtgObjectRequest {
 }
 
 impl DtgObjectRequest {
-    pub fn new(flag: ObjectRequestAction, object_id: u64, topics: HashSet<TopicId>) -> DtgObjectRequest {
-        let size: u16 = (topics.len() * size_of::<TopicId>()) as Size; // x = size_of(topics)
+    pub fn new(flag: ObjectRequestAction, object_id: ObjectId, topics: HashSet<TopicId>) -> DtgObjectRequest {
+        let size: Size = (topics.len() * size_of::<TopicId>()) as Size; // x = size_of(topics)
         DtgObjectRequest {
             datagram_type: DatagramType::ObjectRequest,
             flag,
@@ -53,7 +53,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
         }
         let size = get_u16_at_pos(buffer, 2)?;
 
-        let mut topics: HashSet<u64>;
+        let mut topics: HashSet<TopicId>;
         if size != 0 {
             topics = get_bytes_from_slice(buffer, 12, (size-1 + 12) as usize )
                 // Convert the bytes vector to a vector of topics id by grouping u8 into u64
@@ -81,13 +81,13 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
 //===== Sent to acknowledge a OBJECT_REQUEST create
 pub struct DtgObjectRequestACK {
     pub datagram_type: DatagramType,
-    pub flag: u8, // Bit field XXXA UDMC (X: Unused, D: delete, M : modify, C: Create, A: subscribe, U: unsubscribe)
-    pub object_id: u64,
-    pub final_object_id: Option<u64>,
+    pub flag: Flag, // Bit field XXXA UDMC (X: Unused, D: delete, M : modify, C: Create, A: subscribe, U: unsubscribe)
+    pub object_id: ObjectId,
+    pub final_object_id: Option<ObjectId>,
 }
 
 impl DtgObjectRequestACK {
-    pub fn new(flag: u8, object_id: ObjectId, final_object_id: Option<ObjectId>) -> DtgObjectRequestACK {
+    pub fn new(flag: Flag, object_id: ObjectId, final_object_id: Option<ObjectId>) -> DtgObjectRequestACK {
         DtgObjectRequestACK {
             datagram_type: DatagramType::ObjectRequestAck,
             flag,
