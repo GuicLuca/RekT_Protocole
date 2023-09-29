@@ -2,8 +2,6 @@
 #![allow(unused)]
 
 
-fn main() -> Result<(), Error> {
+fn main(){
     println!("Hello, world!");
-
-    Ok(())
 }
