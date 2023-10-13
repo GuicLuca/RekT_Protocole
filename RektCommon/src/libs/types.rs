@@ -1,5 +1,3 @@
-use std::error::Error;
-
 // ===================
 //  Common used types
 // ===================

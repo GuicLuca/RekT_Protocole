@@ -2,8 +2,9 @@
  * End connexion reasons are used to
  * detail the reason of the shutdown request.
  */
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
+#[no_mangle]
 pub enum EndConnexionReason {
     Shutdown,
     TimeOut,

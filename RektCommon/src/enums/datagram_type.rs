@@ -1,11 +1,14 @@
 #![allow(unused)]
 
+use std::ffi::c_char;
+
 /**
  * DatagramType are used to translate request type
  * to the corresponding hexadecimal code.
  */
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
+#[no_mangle]
 pub enum DatagramType {
     Connect,
     ConnectAck,
@@ -35,8 +38,9 @@ pub enum DatagramType {
  *
  * @return string, the corresponding name
  */
-pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str {
-    match datagram {
+#[no_mangle]
+pub extern "C" fn display_datagram_type<'a>(datagram: DatagramType) -> *const c_char{
+    let result = match datagram {
         DatagramType::Connect => "Connect",
         DatagramType::ConnectAck => "Connect_ACK",
         DatagramType::ConnectNack => "Connect_NACK",
@@ -56,7 +60,9 @@ pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str {
         DatagramType::ObjectRequestNack => "Object_Request_Nack",
         DatagramType::Data => "Data",
         DatagramType::Unknown => "Unknown",
-    }
+    };
+
+    std::ffi::CString::new(result).unwrap().into_raw()
 }
 
 /**
@@ -66,6 +72,7 @@ pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str {
  *
  * @return DatagramType
  */
+
 impl From<u8> for DatagramType {
     fn from(value: u8) -> Self {
         match value {

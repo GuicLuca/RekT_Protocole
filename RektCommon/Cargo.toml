@@ -1,5 +1,5 @@
 [package]
-name = "rekt-protocol-common"
+name = "rekt-common"
 version = "0.1.1"
 edition = "2021"
 include = [
@@ -19,5 +19,11 @@ keywords = [
 ]
 categories = ["game-development"]
 license = "MIT"
+
+[lib]
+crate-type = ["staticlib"]
+
+[build-dependencies]
+cbindgen = "0.26.0"
 
 [dependencies]

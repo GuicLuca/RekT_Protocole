@@ -4,6 +4,7 @@
  */
 #[derive(Copy, Clone, PartialEq)]
 #[repr(u8)]
+#[no_mangle]
 pub enum TopicsResponse {
     SubSuccess,
     SubFailure,

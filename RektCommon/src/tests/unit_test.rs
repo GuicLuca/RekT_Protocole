@@ -3,14 +3,6 @@ use std::collections::HashSet;
 use crate::libs::types::TopicId;
 use crate::libs::utils::{diff_hashsets, get_bytes_from_slice, get_u16_at_pos, get_u32_at_pos, get_u64_at_pos, u8_to_vec_be, vec_to_u8};
 
-// ------------------------------------------------
-//    Workflow test
-// ------------------------------------------------
-#[test]
-fn test_main_end_successfully() {
-    assert!(crate::main().is_ok());
-}
-
 
 // ------------------------------------------------
 //    Lib test

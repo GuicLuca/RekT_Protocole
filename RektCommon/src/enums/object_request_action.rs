@@ -3,6 +3,7 @@
  */
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
+#[no_mangle]
 pub enum ObjectRequestAction {
     Create,
     Update,

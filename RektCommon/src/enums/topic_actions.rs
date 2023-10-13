@@ -4,6 +4,7 @@
  */
 #[derive(Copy, Clone)]
 #[repr(u8)]
+#[no_mangle]
 pub enum TopicsAction {
     Subscribe,
     Unsubscribe,
