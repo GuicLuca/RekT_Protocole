@@ -31,13 +31,13 @@ jobs:
           run: cargo build --release
           working-directory: ${{ matrix.workdir }}
   
-        - name: Create Zip File
-          run: |
-            if ( "${{ matrix.os }}" == "windows-latest" ); then
-              7z a ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
-            else
-              zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
-            fi
+        - name: Create Zip File for windows
+          if: ${{ matrix.os }} == "windows-latest";
+          run: 7z a ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
+
+        - name: Create Zip File for unix
+          if: ${{ matrix.os }} != "windows-latest";
+          run: zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
           working-directory: ${{ matrix.workdir }}
   
         - name: Upload Artifact
