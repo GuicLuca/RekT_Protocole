@@ -32,7 +32,12 @@ jobs:
           working-directory: ${{ matrix.workdir }}
   
         - name: Create Zip File
-          run: zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
+          run: |
+            if [ "${{ matrix.os }}" = "windows-latest" ]; then
+              7z a ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
+            else
+              zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
+            fi
           working-directory: ${{ matrix.workdir }}
   
         - name: Upload Artifact
