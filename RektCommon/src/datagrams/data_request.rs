@@ -3,6 +3,7 @@ use crate::libs::types::{Size, TopicId};
 use crate::libs::utils::{get_u16_at_pos, get_u32_at_pos, get_u64_at_pos};
 
 // The datagram data is used to embed a payload to send information through a specific topic
+#[no_mangle]
 pub struct DtgData {
     pub datagram_type: DatagramType,
     // 1 byte

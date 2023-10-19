@@ -4,6 +4,7 @@ use crate::libs::types::ClientId;
 use crate::libs::utils::get_u64_at_pos;
 
 //===== Sent to know the server status
+#[repr(C)]
 pub struct DtgServerStatus {
     pub datagram_type: DatagramType,
 }
@@ -30,6 +31,7 @@ impl From<&[u8]> for DtgServerStatus {
 }
 
 //===== Sent to answer a ServerStatus request
+#[repr(C)]
 pub struct DtgServerStatusACK {
     pub datagram_type: DatagramType,
     pub connected_client: ClientId, // Amount of connected client. It use the same type as client_id to ensure sufficient capacity

@@ -2,10 +2,10 @@
  * Topics action are all actions that
  * a peer can do in a TOPICS_REQUEST
  */
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
 #[no_mangle]
-pub enum TopicsAction {
+pub enum TopicAction {
     Subscribe,
     Unsubscribe,
     Unknown,
@@ -18,12 +18,12 @@ pub enum TopicsAction {
  *
  * @return u8
  */
-impl From<TopicsAction> for u8 {
-    fn from(value: TopicsAction) -> Self {
+impl From<TopicAction> for u8 {
+    fn from(value: TopicAction) -> Self {
         match value {
-            TopicsAction::Subscribe => 0x00,
-            TopicsAction::Unsubscribe => 0xFF,
-            TopicsAction::Unknown => 0xAA,
+            TopicAction::Subscribe => 0x00,
+            TopicAction::Unsubscribe => 0xFF,
+            TopicAction::Unknown => 0xAA,
         }
     }
 }
@@ -35,12 +35,12 @@ impl From<TopicsAction> for u8 {
  *
  * @return TopicsActions
  */
-impl From<u8> for TopicsAction {
+impl From<u8> for TopicAction {
     fn from(value: u8) -> Self {
         match value {
-            0x00 => TopicsAction::Subscribe,
-            0xFF => TopicsAction::Unsubscribe,
-            _ => TopicsAction::Unknown
+            0x00 => TopicAction::Subscribe,
+            0xFF => TopicAction::Unsubscribe,
+            _ => TopicAction::Unknown
         }
     }
 }

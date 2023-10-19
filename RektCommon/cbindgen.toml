@@ -8,7 +8,7 @@ language = "C++"
 
 ############## Options for Wrapping the Contents of the Header #################
 
-header = "/* RektProtocole common lib - Lucas Guichard <lucasguichard127@gmail.com> - 2023 */"
+header = "/* RektProtocol common lib - Lucas Guichard <lucasguichard127@gmail.com> - 2023 */"
 # trailer = "/* Text to put at the end of the generated file */"
 # include_guard = "my_bindings_h"
 pragma_once = true
@@ -18,9 +18,7 @@ include_version = false
 namespaces = []
 using_namespaces = []
 sys_includes = []
-includes = [
-    "std::os::raw::c_uchar",
-]
+includes = []
 no_includes = false
 after_includes = ""
 
@@ -50,7 +48,7 @@ usize_is_size_t = true
 
 [defines]
 # "target_os = freebsd" = "DEFINE_FREEBSD"
-"feature = all()" = "DEFINE_ALL
+# "feature = all()" = "DEFINE_ALL
 
 
 
@@ -92,7 +90,7 @@ rename_fields = "None"
 # must_use = "MUST_USE_STRUCT"
 # deprecated = "DEPRECATED_STRUCT"
 # deprecated_with_note = "DEPRECATED_STRUCT_WITH_NOTE"
-derive_constructor = false
+derive_constructor = true
 derive_eq = false
 derive_neq = false
 derive_lt = false
@@ -141,9 +139,16 @@ bitflags = false
 ############## Options for How Your Rust library Should Be Parsed ##############
 
 [parse]
-parse_deps = false
+parse_deps = true
 include = [
     "src/enums/datagram_type.rs",
+    "src/enums/end_connection_reason.rs",
+    "src/enums/object_request_action.rs",
+    "src/enums/topic_actions.rs",
+    "src/enums/topic_response.rs",
+    "src/libs/utils.rs",
+    "src/datagrams/connect_requests.rs",
+    "src/rekt_commom_ffi.rs",
 ]
 exclude = []
 clean = false

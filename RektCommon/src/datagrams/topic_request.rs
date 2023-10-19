@@ -1,19 +1,19 @@
 use crate::enums::datagram_type::DatagramType;
-use crate::enums::topic_actions::TopicsAction;
-use crate::enums::topics_response::TopicsResponse;
+use crate::enums::topic_action::TopicAction;
+use crate::enums::topic_response::TopicResponse;
 use crate::libs::types::{Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos};
 
 //===== Sent to subscribe/unsubscribe to a topic
 pub struct DtgTopicRequest {
     pub datagram_type: DatagramType, // 1 byte
-    pub flag: TopicsAction, // 1 byte
+    pub flag: TopicAction, // 1 byte
     pub topic_id: TopicId, // 8 bytes
 }
 
 //===== Sent to subscribe a topic
 impl DtgTopicRequest {
-    pub fn new(action: TopicsAction, topic_id: TopicId) -> DtgTopicRequest {
+    pub fn new(action: TopicAction, topic_id: TopicId) -> DtgTopicRequest {
         DtgTopicRequest {
             datagram_type: DatagramType::TopicRequest,
             flag: action,
@@ -42,7 +42,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequest{
 
         Ok(DtgTopicRequest {
             datagram_type: DatagramType::from(buffer[0]),
-            flag: TopicsAction::from(buffer[1]),
+            flag: TopicAction::from(buffer[1]),
             topic_id
         })
     }
@@ -51,12 +51,12 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequest{
 //===== Sent to acknowledge a TOPIC_REQUEST
 pub struct DtgTopicRequestAck {
     pub datagram_type: DatagramType,
-    pub flag: TopicsResponse,
+    pub flag: TopicResponse,
     pub topic_id: TopicId,
 }
 
 impl DtgTopicRequestAck {
-    pub const fn new(topic_id: TopicId, status: TopicsResponse) -> DtgTopicRequestAck {
+    pub const fn new(topic_id: TopicId, status: TopicResponse) -> DtgTopicRequestAck {
         DtgTopicRequestAck {
             datagram_type: DatagramType::TopicRequestAck,
             flag: status,
@@ -85,7 +85,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequestAck{
 
         Ok(DtgTopicRequestAck {
             datagram_type: DatagramType::from(buffer[0]),
-            flag: TopicsResponse::from(buffer[1]),
+            flag: TopicResponse::from(buffer[1]),
             topic_id
         })
     }
@@ -93,14 +93,14 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequestAck{
 
 pub struct DtgTopicRequestNack {
     pub datagram_type: DatagramType,
-    pub flag: TopicsResponse,
+    pub flag: TopicResponse,
     pub size: Size,
     pub payload: Vec<u8>
 }
 
 impl DtgTopicRequestNack{
 
-    pub fn new(status: TopicsResponse, error_message: &str) -> DtgTopicRequestNack {
+    pub fn new(status: TopicResponse, error_message: &str) -> DtgTopicRequestNack {
         let size = error_message.len() as Size; // string length + 1 for the action
         DtgTopicRequestNack {
             datagram_type: DatagramType::TopicRequestNack,
@@ -133,7 +133,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequestNack{
 
         Ok(DtgTopicRequestNack {
             datagram_type: DatagramType::from(buffer[0]),
-            flag: TopicsResponse::from(buffer[1]),
+            flag: TopicResponse::from(buffer[1]),
             size,
             payload: get_bytes_from_slice(buffer, 4, (4 + size-1) as usize)
         })

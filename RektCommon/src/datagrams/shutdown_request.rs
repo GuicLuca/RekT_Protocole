@@ -2,6 +2,7 @@ use crate::enums::datagram_type::DatagramType;
 use crate::enums::end_connection_reason::EndConnexionReason;
 
 //===== Sent to close the connexion between peer and broker
+#[repr(C)]
 pub struct DtgShutdown {
     pub datagram_type: DatagramType,
     pub reason: EndConnexionReason,

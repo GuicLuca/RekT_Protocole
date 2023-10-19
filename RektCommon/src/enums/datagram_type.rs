@@ -38,9 +38,8 @@ pub enum DatagramType {
  *
  * @return string, the corresponding name
  */
-#[no_mangle]
-pub extern "C" fn display_datagram_type<'a>(datagram: DatagramType) -> *const c_char{
-    let result = match datagram {
+pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str{
+    match datagram {
         DatagramType::Connect => "Connect",
         DatagramType::ConnectAck => "Connect_ACK",
         DatagramType::ConnectNack => "Connect_NACK",
@@ -60,9 +59,7 @@ pub extern "C" fn display_datagram_type<'a>(datagram: DatagramType) -> *const c_
         DatagramType::ObjectRequestNack => "Object_Request_Nack",
         DatagramType::Data => "Data",
         DatagramType::Unknown => "Unknown",
-    };
-
-    std::ffi::CString::new(result).unwrap().into_raw()
+    }
 }
 
 /**

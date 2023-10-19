@@ -19,6 +19,7 @@ keywords = [
 ]
 categories = ["game-development"]
 license = "MIT"
+build = "build.rs"
 
 [lib]
 crate-type = ["staticlib"]
@@ -27,3 +28,4 @@ crate-type = ["staticlib"]
 cbindgen = "0.26.0"
 
 [dependencies]
+log = "0.4.20"

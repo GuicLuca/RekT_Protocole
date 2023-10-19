@@ -6,6 +6,7 @@ use crate::libs::types::{Flag, ObjectId, Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos, u8_to_vec_be};
 
 //===== Sent to acknowledge a TOPIC_REQUEST
+#[repr(C)]
 pub struct DtgObjectRequest {
     pub datagram_type: DatagramType,
     pub flag: ObjectRequestAction,
@@ -79,6 +80,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
 }
 
 //===== Sent to acknowledge a OBJECT_REQUEST create
+#[repr(C)]
 pub struct DtgObjectRequestACK {
     pub datagram_type: DatagramType,
     pub flag: Flag, // Bit field XXXA UDMC (X: Unused, D: delete, M : modify, C: Create, A: subscribe, U: unsubscribe)
@@ -144,6 +146,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
 
 
 // ===== Sent in case of error for all action (Create update delete)
+#[repr(C)]
 pub struct DtgObjectRequestNACK {
     pub datagram_type: DatagramType,
     pub flag: u8, // Bitfield XXXA UDMC (X: Unused, D: delete, M : modify, C: Create, A: subscribe, U: unsubscribe)

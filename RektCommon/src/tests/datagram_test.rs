@@ -15,8 +15,8 @@ use crate::enums::datagram_type::DatagramType;
 use crate::enums::end_connection_reason::EndConnexionReason;
 use crate::enums::end_connection_reason::EndConnexionReason::{Shutdown, TimeOut};
 use crate::enums::object_request_action::ObjectRequestAction;
-use crate::enums::topic_actions::TopicsAction;
-use crate::enums::topics_response::TopicsResponse;
+use crate::enums::topic_action::TopicAction;
+use crate::enums::topic_response::TopicResponse;
 use crate::libs::types::{ClientId, ObjectId, PingId, Size, TopicId};
 use crate::libs::utils::vec_to_u8;
 
@@ -375,7 +375,7 @@ fn test_DtgObjectRequestNACK_try_from() {
 // -------------------------------------------------------
 #[test]
 fn test_DtgTopicRequest_as_bytes() {
-    let TopicAction = TopicsAction::Subscribe;
+    let TopicAction = TopicAction::Subscribe;
     let TopicsId = 641635874654 as TopicId;
 
     let mut bytes: Vec<u8> = Vec::new();
@@ -389,7 +389,7 @@ fn test_DtgTopicRequest_as_bytes() {
 
 #[test]
 fn test_DtgOTopicRequest_try_from() {
-    let TopicAction = TopicsAction::Subscribe;
+    let TopicAction = TopicAction::Subscribe;
     let TopicsId = 641635874654 as TopicId;
 
     let dtg = Arc::from(DtgTopicRequest::new(TopicAction, TopicsId));
@@ -405,7 +405,7 @@ fn test_DtgOTopicRequest_try_from() {
 
 #[test]
 fn test_DtgTopicRequestACK_as_bytes() {
-    let flag = TopicsResponse::SubFailure;
+    let flag = TopicResponse::SubFailure;
     let TopicId = 941636875874654 as TopicId;
 
     let mut bytes: Vec<u8> = Vec::new();
@@ -419,7 +419,7 @@ fn test_DtgTopicRequestACK_as_bytes() {
 
 #[test]
 fn test_DtgTopicRequestACK_try_from() {
-    let flag = TopicsResponse::UnsubSuccess;
+    let flag = TopicResponse::UnsubSuccess;
     let TopicId = 321789456398724 as TopicId;
 
     let dtg = Arc::from(DtgTopicRequestAck::new(TopicId, flag));
@@ -435,7 +435,7 @@ fn test_DtgTopicRequestACK_try_from() {
 
 #[test]
 fn test_DtgTopicRequestNACK_as_bytes() {
-    let flag = TopicsResponse::UnsubSuccess;
+    let flag = TopicResponse::UnsubSuccess;
     let reason = "Fail to unsubscribe the topic XXX because the id is invalid.";
 
     let mut bytes: Vec<u8> = Vec::new();
@@ -450,7 +450,7 @@ fn test_DtgTopicRequestNACK_as_bytes() {
 
 #[test]
 fn test_DtgTopicRequestNACK_try_from() {
-    let flag = TopicsResponse::UnsubSuccess;
+    let flag = TopicResponse::UnsubSuccess;
     let reason = "Fail to unsubscribe the topic XXX because the id is invalid.";
 
     let dtg = Arc::from(DtgTopicRequestNack::new(flag, reason));
