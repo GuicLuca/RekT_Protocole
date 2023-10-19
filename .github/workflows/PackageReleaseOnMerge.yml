@@ -32,7 +32,7 @@ jobs:
           working-directory: ${{ matrix.workdir }}
 
         - name: Debug
-          run: ls target/release/
+          run: ls -a -l
   
         - name: Create Zip File
           run: zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
