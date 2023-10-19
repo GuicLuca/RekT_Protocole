@@ -1,0 +1,31 @@
+[package]
+name = "rekt-common"
+version = "0.1.1"
+edition = "2021"
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE"
+]
+homepage = "https://github.com/GuicLuca/RekT_Protocole/wiki"
+description = "Common lib to use the rekt-protocol. See the crate homepage to check the protocol RFC."
+keywords = [
+    "RekT-protocol",
+    "pub-sub",
+    "Network",
+    "Masivement-online",
+    "broker"
+]
+categories = ["game-development"]
+license = "MIT"
+build = "build.rs"
+
+[lib]
+crate-type = ["staticlib"]
+
+[build-dependencies]
+cbindgen = "0.26.0"
+
+[dependencies]
+log = "0.4.20"

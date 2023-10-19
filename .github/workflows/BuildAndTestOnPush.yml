@@ -4,11 +4,7 @@ on:
   push:
     branches:
       - develop
-      - feat-**
-
-defaults:
-  run:
-    working-directory: Sources
+      - 'feat-*'
 
 jobs:
   build:
@@ -16,6 +12,7 @@ jobs:
        matrix:
          toolchain: [stable, beta, nightly]
          os: [ubuntu-latest, windows-latest, macOS-latest]
+         workdir: [RektBroker, RektCommon]
          
     runs-on: ${{ matrix.os }}
   
@@ -29,9 +26,12 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
       - name: Update toolchain
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+        working-directory: ${{ matrix.workdir }}
 
       - name: Build for ${{ matrix.os }}
         run: cargo build --release
+        working-directory: ${{ matrix.workdir }}
 
       - name: Run Tests
         run: cargo test
+        working-directory: ${{ matrix.workdir }}
