@@ -33,7 +33,7 @@ jobs:
   
         - name: Create Zip File
           run: |
-            if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            if ( "${{ matrix.os }}" == "windows-latest" ); then
               7z a ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
             else
               zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
