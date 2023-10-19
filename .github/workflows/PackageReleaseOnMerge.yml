@@ -1,35 +1,41 @@
-﻿name: Build and Package
+name: Build and Package
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+      strategy:
+       matrix:
+         toolchain: [stable, beta, nightly]
+         os: [ubuntu-latest, windows-latest, macOS-latest]
+         workdir: [RektBroker, RektCommon]
+         
+      runs-on: ${{ matrix.os }}
 
-    steps:
-      - name: Set up Rust
-        uses: actions/setup-rust@v1
-
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Build for Linux
-        run: cargo build --release --target x86_64-unknown-linux-gnu
-
-      - name: Build for Windows
-        run: cargo build --release --target x86_64-pc-windows-msvc
-
-      - name: Build for macOS
-        run: cargo build --release --target x86_64-apple-darwin
-
-      - name: Create Zip File
-        run: zip -r RekTBroker.zip target/release/*
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: RekTBroker
-          path: RekTBroker.zip
+      steps:
+        - name: Check out code
+          uses: actions/checkout@v3
+  
+        - name: Set up rust toolchain
+          uses: actions-rs/toolchain@v1
+          with:
+            toolchain: ${{ matrix.toolchain }}
+        - name: Update toolchain
+          run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+          working-directory: ${{ matrix.workdir }}
+  
+        - name: Build for ${{ matrix.os }}
+          run: cargo build --release
+          working-directory: ${{ matrix.workdir }}
+  
+        - name: Create Zip File
+          run: zip -r ${{ matrix.workdir }}_${{ matrix.os }}.zip target/release/*
+  
+        - name: Upload Artifact
+          uses: actions/upload-artifact@v2
+          with:
+            name: ${{ matrix.workdir }}_${{ matrix.os }}
+            path: ${{ matrix.workdir }}_${{ matrix.os }}.zip
