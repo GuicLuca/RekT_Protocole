@@ -4,43 +4,34 @@ on:
   push:
     branches:
       - develop
+      - 'feat-*'
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    strategy:
+       matrix:
+         toolchain: [stable, beta, nightly]
+         os: [ubuntu-latest, windows-latest, macOS-latest]
+         workdir: [RektBroker, RektCommon]
+         
+    runs-on: ${{ matrix.os }}
+  
     steps:
-      - name: Set up Rust
-        uses: actions/setup-rust@v1
-
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Build for Linux
-        run: cargo build --release --target x86_64-unknown-linux-gnu
+      - name: Set up rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - name: Update toolchain
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+        working-directory: ${{ matrix.workdir }}
 
-      - name: Build for Windows
-        run: cargo build --release --target x86_64-pc-windows-msvc
-
-      - name: Build for macOS
-        run: cargo build --release --target x86_64-apple-darwin
+      - name: Build for ${{ matrix.os }}
+        run: cargo build --release
+        working-directory: ${{ matrix.workdir }}
 
       - name: Run Tests
         run: cargo test
-
-      - name: Run Tests with Comment Coverage
-        run: cargo install cargo-kcov && cargo kcov -- --verify --exclude-pattern=/.cargo,/usr/lib --include-pattern=src/ --comment-coverage
-
-      - name: Get Comment Coverage
-        id: comment_coverage
-        run: |
-          const fs = require('fs');
-          const coverage = fs.readFileSync('target/cov/coverage.json', 'utf8');
-          const json = JSON.parse(coverage);
-          const commentCoverage = json.comment_coverage.toFixed(2);
-
-          echo "::set-output name=comment_coverage::${commentCoverage}"
-
-      - name: Display Comment Coverage
-        run: |
-          echo "Comment Coverage: ${{ steps.comment_coverage.outputs.comment_coverage }}%"
+        working-directory: ${{ matrix.workdir }}
