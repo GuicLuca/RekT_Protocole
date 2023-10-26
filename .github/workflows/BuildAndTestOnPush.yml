@@ -28,6 +28,19 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         working-directory: ${{ matrix.workdir }}
 
+      - name: install-cmake
+        # You may pin to the exact commit or the version.
+        # uses: Symbitic/install-cmake@301e932c0011b8d12d8bf33d4975fd1e17972709
+        uses: Symbitic/install-cmake@v0.1.0
+        with:
+          # Version of CMake to install
+          cmake: 3.17.2
+          # Version of ninja-build to install
+          ninja: 1.9.0
+          # Override default platform with one of [win, mac, linux]
+          platform: ${{ matrix.os }}
+      
+
       - name: Build for ${{ matrix.os }}
         run: cargo build --release
         working-directory: ${{ matrix.workdir }}
