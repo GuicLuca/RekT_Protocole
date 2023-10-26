@@ -31,11 +31,18 @@ jobs:
           run: cargo build --release
           working-directory: ${{ matrix.workdir }}
   
-        - name: Create Zip File
-          run: zip -r ${{ matrix.workdir }}_${{ matrix.os }}.zip target/release/*
+        - name: Create Zip File (Linux and macOS)
+          run: zip -r ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
+          working-directory: ${{ matrix.workdir }}
+          if: ${{ matrix.os != 'windows-latest' }}
+  
+        - name: Create Zip File (Windows)
+          run: 7z a ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip target/release/*
+          working-directory: ${{ matrix.workdir }}
+          if: ${{ matrix.os == 'windows-latest' }}
   
         - name: Upload Artifact
           uses: actions/upload-artifact@v2
           with:
-            name: ${{ matrix.workdir }}_${{ matrix.os }}
-            path: ${{ matrix.workdir }}_${{ matrix.os }}.zip
+            name: ${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}
+            path: ${{ matrix.workdir }}/${{ matrix.workdir }}_${{ matrix.os }}_${{ matrix.toolchain }}.zip
