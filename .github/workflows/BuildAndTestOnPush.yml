@@ -40,8 +40,12 @@ jobs:
 
       - name: Install Chocolatey pkg (Windozs only)
         # You may pin to the exact commit or the version.
-        # uses: Tyler887/chocolatey-install@7c913058b09c2f7a474bfeb9a80dabf615823483
-        uses: Tyler887/chocolatey-install@1.0
+        # uses: crazy-max/ghaction-chocolatey@0e015857dd851f84fcb7fb53380eb5c4c8202333
+        uses: crazy-max/ghaction-chocolatey@v3.0.0
+        with:
+          # Arguments to pass to Chocolatey
+          # Docker image to use
+          image: ghcr.io/crazy-max/ghaction-chocolatey
         if: ${{ matrix.os == 'windows-latest' }}
   
       - name: Install CMake (Windows)
