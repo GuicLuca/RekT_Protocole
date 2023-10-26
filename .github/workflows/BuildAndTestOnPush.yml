@@ -28,10 +28,21 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         working-directory: ${{ matrix.workdir }}
 
-      - name: Install CMake (Linux and macOS)
+      - name: Install CMake (Linux)
         run: sudo apt-get update && sudo apt-get install -y cmake
         working-directory: ${{ matrix.workdir }}
-        if: ${{ matrix.os != 'windows-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+
+      - name: Install CMake (macOS)
+        run: brew update && brew install cmake
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'macOS-latest' }}
+
+      - name: Install Chocolatey pkg (Windozs only)
+        # You may pin to the exact commit or the version.
+        # uses: Tyler887/chocolatey-install@7c913058b09c2f7a474bfeb9a80dabf615823483
+        uses: Tyler887/chocolatey-install@1.0
+        if: ${{ matrix.os == 'windows-latest' }}
   
       - name: Install CMake (Windows)
         run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
