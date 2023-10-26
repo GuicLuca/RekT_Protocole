@@ -58,7 +58,7 @@ jobs:
         if: ${{ matrix.os == 'macOS-latest' }}
   
       - name: Set NASM compiler path (Windows)
-        run: export CMAKE_ASM_NASM_COMPILER=C:\Program Files\NASM\nasm.exe
+        run: set CMAKE_ASM_NASM_COMPILER=C:\Program Files\NASM\nasm.exe
         working-directory: ${{ matrix.workdir }}
         if: ${{ matrix.os == 'windows-latest' }}
 
