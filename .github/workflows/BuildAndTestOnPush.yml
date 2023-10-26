@@ -28,8 +28,15 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         working-directory: ${{ matrix.workdir }}
 
-      - name: Install CMake
-        uses: cmake/setup-cmake@v1
+      - name: Install CMake (Linux and macOS)
+        run: sudo apt-get update && sudo apt-get install -y cmake
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os != 'windows-latest' }}
+  
+      - name: Install CMake (Windows)
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'windows-latest' }}
       
       - name: Build for ${{ matrix.os }}
         run: cargo build --release
