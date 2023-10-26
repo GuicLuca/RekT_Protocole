@@ -1,0 +1,16 @@
+[server]
+port="3838"
+
+[period]
+heartbeat_period=2 #secondes
+ping_period=10 #secondes
+
+[debug]
+debug_level="info" # trace, debug, info, warn, error
+debug_datagram_handler = true
+debug_ping_sender = true
+debug_data_handler = true
+debug_heartbeat_checker = true
+debug_topic_handler = true
+debug_client_manager = true
+debug_object_handler = true

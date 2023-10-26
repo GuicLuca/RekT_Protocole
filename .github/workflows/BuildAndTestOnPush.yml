@@ -1,4 +1,4 @@
-name: Build, Test, and Package with Comment Coverage
+name: Build, Test, and Package
 
 on:
   push:
