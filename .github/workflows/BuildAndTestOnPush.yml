@@ -44,6 +44,7 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v3.0.0
         with:
           # Arguments to pass to Chocolatey
+          args: -h
           # Docker image to use
           image: ghcr.io/crazy-max/ghaction-chocolatey
         if: ${{ matrix.os == 'windows-latest' }}
