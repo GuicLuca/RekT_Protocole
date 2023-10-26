@@ -28,31 +28,14 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         working-directory: ${{ matrix.workdir }}
 
-      - name: Install CMake (Linux)
-        run: sudo apt-get update && sudo apt-get install -y cmake
-        working-directory: ${{ matrix.workdir }}
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-
-      - name: Install CMake (macOS)
-        run: brew update && brew install cmake
-        working-directory: ${{ matrix.workdir }}
-        if: ${{ matrix.os == 'macOS-latest' }}
-
-      - name: Install Chocolatey pkg (Windozs only)
+      - name: Set up NASM
         # You may pin to the exact commit or the version.
-        # uses: crazy-max/ghaction-chocolatey@0e015857dd851f84fcb7fb53380eb5c4c8202333
-        uses: crazy-max/ghaction-chocolatey@v3.0.0
+        # uses: ilammy/setup-nasm@321e6ed62a1fc77024a3bd853deb33645e8b22c4
+        uses: ilammy/setup-nasm@v1.4.0
         with:
-          # Arguments to pass to Chocolatey
-          args: -h
-          # Docker image to use
-          image: ghcr.io/crazy-max/ghaction-chocolatey
-        if: ${{ matrix.os == 'windows-latest' }}
-  
-      - name: Install CMake (Windows)
-        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
-        working-directory: ${{ matrix.workdir }}
-        if: ${{ matrix.os == 'windows-latest' }}
+          # NASM version to install
+          version: 2.15.05
+          platform: ${{ matrix.workdir }}
       
       - name: Build for ${{ matrix.os }}
         run: cargo build --release
