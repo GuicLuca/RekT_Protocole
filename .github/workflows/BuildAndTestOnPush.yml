@@ -28,14 +28,36 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         working-directory: ${{ matrix.workdir }}
 
-      - name: Set up NASM
-        # You may pin to the exact commit or the version.
-        # uses: ilammy/setup-nasm@321e6ed62a1fc77024a3bd853deb33645e8b22c4
-        uses: ilammy/setup-nasm@v1.4.0
-        with:
-          # NASM version to install
-          version: 2.15.05
-          platform: ${{ matrix.workdir }}
+      - name: Install NASM (Linux)
+        run: sudo apt-get update && sudo apt-get install -y nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+  
+      - name: Install NASM (MacOS)
+        run: brew update && brew install nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'macOS-latest' }}
+  
+      - name: Install NASM (Windows)
+        run: winget install nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'windows-latest' }}
+  
+      - name: Set NASM compiler path (Linux)
+        run: export CMAKE_ASM_NASM_COMPILER=/usr/bin/nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+  
+      - name: Set NASM compiler path (MacOS)
+        run: export CMAKE_ASM_NASM_COMPILER=/usr/local/bin/nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'macOS-latest' }}
+  
+      - name: Set NASM compiler path (Windows)
+        run: export CMAKE_ASM_NASM_COMPILER=C:\Program Files\NASM\nasm.exe
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'windows-latest' }}
+
       
       - name: Build for ${{ matrix.os }}
         run: cargo build --release
