@@ -188,19 +188,6 @@ pub fn convert_wrapper_to_hashset(wrapper: HashSetWrapperU64) -> HashSet<u64> {
     hashset
 }
 
-pub fn convert_option_to_ptr(option: Option<u64>) -> *const c_ulonglong {
-    match option {
-        Some(value) => Box::into_raw(Box::new(value)) as *const c_ulonglong,
-        None => null(),
-    }
-}
-
-pub fn free_option_ptr(ptr: *const c_ulonglong) {
-    if !ptr.is_null() {
-        unsafe { Box::from_raw(ptr as *mut c_ulonglong) };
-    }
-}
-
 pub fn convert_ptr_to_option(ptr: *const c_ulonglong) -> Option<u64> {
     if ptr.is_null() {
         None
@@ -791,12 +778,12 @@ impl CDtgObjectRequestACK {
 
 fn dtg_object_request_ack_to_c_type(dtg: DtgObjectRequestACK) -> CDtgObjectRequestACK
 {
-    CDtgObjectRequestACK::new(dtg.flag, dtg.object_id, convert_option_to_ptr(dtg.final_object_id))
+    CDtgObjectRequestACK::new(dtg.flag, dtg.object_id, dtg.final_object_id as *const c_ulonglong)
 }
 
 fn dtg_object_request_ack_to_rust_type(dtg: CDtgObjectRequestACK) -> DtgObjectRequestACK
 {
-    DtgObjectRequestACK::new(dtg.flag, dtg.object_id, convert_ptr_to_option(dtg.final_object_id))
+    DtgObjectRequestACK::new(dtg.flag, dtg.object_id, dtg.final_object_id as ObjectId)
 }
 
 #[no_mangle]

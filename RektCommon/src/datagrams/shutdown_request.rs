@@ -18,17 +18,19 @@ impl DtgShutdown {
 
     pub fn as_bytes(&self) -> Vec<u8>
     {
-        let mut bytes: Vec<u8> = Vec::with_capacity(2);
+        let mut bytes: Vec<u8> = Vec::with_capacity(DtgShutdown::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.push(u8::from(self.reason));
         return bytes;
     }
+
+    pub const fn get_default_byte_size() -> usize { return 2; }
 }
 impl<'a> TryFrom<&'a [u8]> for DtgShutdown{
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 2 {
+        if buffer.len() < DtgShutdown::get_default_byte_size() {
             return Err("Payload len is to short for a DtgShutdown.");
         }
 
