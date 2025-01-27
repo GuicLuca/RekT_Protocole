@@ -20,13 +20,21 @@ impl DtgServerStatus {
     {
         return [u8::from(self.datagram_type)].into();
     }
+
+    pub const fn get_default_byte_size() -> usize { return 1; }
 }
 
-impl From<&[u8]> for DtgServerStatus {
-    fn from(buffer: &[u8]) -> Self {
-        DtgServerStatus {
-            datagram_type: DatagramType::from(buffer[0]),
+impl<'a> TryFrom<&'a [u8]> for DtgServerStatus {
+    type Error = &'a str;
+
+    fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
+        if buffer.len() < DtgServerStatus::get_default_byte_size() {
+            return Err("Payload len is to short for a DtgServerStatus.");
         }
+
+        Ok(DtgServerStatus {
+            datagram_type: DatagramType::from(buffer[0]),
+        })
     }
 }
 
@@ -47,19 +55,22 @@ impl DtgServerStatusACK {
 
     pub fn as_bytes(&self) -> Vec<u8>
     {
-        let mut bytes: Vec<u8> = Vec::with_capacity(1 + size_of::<ClientId>());
+        let mut bytes: Vec<u8> = Vec::with_capacity(DtgServerStatusACK::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.connected_client.to_le_bytes());
 
         return bytes;
     }
+
+
+    pub const fn get_default_byte_size() -> usize { return 9; }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgServerStatusACK {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 9 {
+        if buffer.len() < DtgServerStatusACK::get_default_byte_size() {
             return Err("Payload len is to short for a DtgServerStatusACK.");
         }
         let connected_client = get_u64_at_pos(buffer, 1)?;

@@ -1,5 +1,6 @@
 [server]
 port="3838"
+packet_buffer_size = 1000 #u16
 
 [period]
 heartbeat_period=2 #secondes

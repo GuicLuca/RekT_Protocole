@@ -13,6 +13,7 @@ use toml;
 #[derive(Serialize, Deserialize, Debug)]
 struct ConfigTomlServer {
     port: Option<String>,
+    packet_buffer_size: Option<u16>,
 }
 
 // Contain the Period table of the toml file
@@ -48,6 +49,7 @@ struct ConfigToml {
 #[derive(Debug)]
 pub struct Config {
     pub port: u16,
+    pub packet_buffer_size: u16,
     pub heart_beat_period: u16,
     pub ping_period: u16,
     pub debug_level: String,
@@ -103,11 +105,11 @@ impl Config {
         info!("Creating server config table...");
 
         // 4.1 - Server variables
-        let port: u16 = match config_toml.server {
+        let (port, packet_buffer_size): (u16, u16) = match config_toml.server {
             Some(server) => {
                 let port: u16 =  match server.port.unwrap_or_else(|| {
                     println!("Missing field port in table server.");
-                    "unknown".to_owned()
+                    "3838".to_owned()
                 }).parse::<u16>() {
                     Ok(value) => {
                         value
@@ -118,11 +120,16 @@ impl Config {
                     }
                 };
 
-                port
+                let packet_buffer_size: u16 = server.packet_buffer_size.unwrap_or_else(|| {
+                    println!("Missing field packet_buffer_size in table server.");
+                    1000u16
+                });
+
+                (port, packet_buffer_size)
             }
             None => {
                 println!("Missing table server.");
-                3838 // Default value if none found
+                (3838, 1000) // Default value if none found
             }
         };
 
@@ -202,6 +209,7 @@ impl Config {
 
         Config {
             port,
+            packet_buffer_size,
             heart_beat_period: heartbeat_period,
             ping_period,
             debug_level,

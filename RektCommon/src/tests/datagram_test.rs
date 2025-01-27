@@ -247,8 +247,8 @@ fn test_DtgObjectRequest_as_bytes() {
 
     let mut bytes: Vec<u8> = Vec::new();
     bytes.push(u8::from(DatagramType::ObjectRequest));
-    bytes.push(u8::from(ObjectAction));
     bytes.extend(((topics.len() * size_of::<TopicId>())as Size).to_le_bytes());
+    bytes.push(u8::from(ObjectAction));
     bytes.extend(ObjectId.to_le_bytes());
     bytes.extend(topics.iter().flat_map(|&x: &TopicId| {
         let bytes: [u8; 8] = x.to_le_bytes();
@@ -290,8 +290,9 @@ fn test_DtgObjectRequestACK_as_bytes() {
     bytes.push(u8::from(DatagramType::ObjectRequestAck));
     bytes.push(flag);
     bytes.extend(objectId.to_le_bytes());
+    bytes.extend(0u64.to_le_bytes());
 
-    let dtg = DtgObjectRequestACK::new(flag, objectId, None);
+    let dtg = DtgObjectRequestACK::new(flag, objectId, 0);
     assert_eq!(dtg.as_bytes(), bytes);
 
     let flag = vec_to_u8(vec!(0,0,0,0,0,0,0,1)); // delete action
@@ -303,7 +304,7 @@ fn test_DtgObjectRequestACK_as_bytes() {
     bytes.extend(objectId.to_le_bytes());
     bytes.extend(finalObjectId.to_le_bytes());
 
-    let dtg = DtgObjectRequestACK::new(flag, objectId, Some(finalObjectId));
+    let dtg = DtgObjectRequestACK::new(flag, objectId, finalObjectId);
     assert_eq!(dtg.as_bytes(), bytes);
 }
 
@@ -312,7 +313,7 @@ fn test_DtgObjectRequestACK_try_from() {
     let flag = vec_to_u8(vec!(0,0,0,1,0,0,0,0)); // subscribe action
     let ObjectId = 98712341687496 as ObjectId;
 
-    let dtg = Arc::from(DtgObjectRequestACK::new(flag, ObjectId, None));
+    let dtg = Arc::from(DtgObjectRequestACK::new(flag, ObjectId, 0));
     let dtg_ref = dtg.clone().as_bytes();
     let ResultDtg_from = DtgObjectRequestACK::try_from(&*dtg_ref);
 
@@ -325,7 +326,7 @@ fn test_DtgObjectRequestACK_try_from() {
     let flag = vec_to_u8(vec!(0,0,0,0,0,0,0,1)); // create action
     let finalObjectId = 3468746 as ObjectId;
 
-    let dtg = Arc::from(DtgObjectRequestACK::new(flag, ObjectId, Some(finalObjectId)));
+    let dtg = Arc::from(DtgObjectRequestACK::new(flag, ObjectId, finalObjectId));
     let dtg_ref = dtg.clone().as_bytes();
     let ResultDtg_from = DtgObjectRequestACK::try_from(&*dtg_ref);
 
@@ -344,8 +345,8 @@ fn test_DtgObjectRequestNACK_as_bytes() {
 
     let mut bytes: Vec<u8> = Vec::new();
     bytes.push(u8::from(DatagramType::ObjectRequestNack));
-    bytes.push(flag);
     bytes.extend((reason.len() as Size).to_le_bytes());
+    bytes.push(flag);
     bytes.extend(objectId.to_le_bytes());
     bytes.extend(reason.as_bytes());
 
@@ -440,8 +441,8 @@ fn test_DtgTopicRequestNACK_as_bytes() {
 
     let mut bytes: Vec<u8> = Vec::new();
     bytes.push(u8::from(DatagramType::TopicRequestNack));
-    bytes.push(u8::from(flag));
     bytes.extend((reason.len() as Size).to_le_bytes());
+    bytes.push(u8::from(flag));
     bytes.extend(reason.as_bytes());
 
     let dtg = DtgTopicRequestNack::new(flag, reason);

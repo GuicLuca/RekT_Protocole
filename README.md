@@ -1,6 +1,6 @@
 # RekT_Protocol
 
-[![crates.io](https://img.shields.io/crates/v/rekt-protocol-common.svg)](https://crates.io/crates/rekt-protocol-common)
+[![crates.io](https://img.shields.io/crates/v/rekt_lib.svg)](https://crates.io/crates/rekt_lib)
 [![docs.rs](https://github.com/GuicLuca/RekT_Protocole/actions/workflows/BuildAndTestOnPush.yml/badge.svg)](https://github.com/GuicLuca/RekT_Protocole/actions/workflows/BuildAndTestOnPush.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![HitCount](https://hits.dwyl.com/Guicluca/RekT_Protocole.svg)](https://hits.dwyl.com/GuicLuca/Rekt_Protocole)

@@ -18,18 +18,20 @@ impl DtgPing {
 
     pub fn as_bytes(&self) -> Vec<u8>
     {
-        let mut bytes: Vec<u8> = Vec::with_capacity(2);
+        let mut bytes: Vec<u8> = Vec::with_capacity(DtgPing::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.push(self.ping_id);
         return bytes;
     }
+
+    pub const fn get_default_byte_size() -> usize { return 2; }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgPing {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 2 {
+        if buffer.len() < DtgPing::get_default_byte_size() {
             return Err("Payload len is to short for a DtgPing.");
         }
 
@@ -54,18 +56,20 @@ impl DtgPong {
 
     pub fn as_bytes(&self) -> Vec<u8>
     {
-        let mut bytes: Vec<u8> = Vec::with_capacity(2);
+        let mut bytes: Vec<u8> = Vec::with_capacity(DtgPong::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.push(self.ping_id);
         return bytes;
     }
+
+    pub const fn get_default_byte_size() -> usize { return 2; }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgPong {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 2 {
+        if buffer.len() < DtgPong::get_default_byte_size() {
             return Err("Payload len is to short for a DtgPong.");
         }
 
