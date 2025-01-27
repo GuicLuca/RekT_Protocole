@@ -1,0 +1,17 @@
+[package]
+name = "minimalist_rekt_client"
+version = "0.0.1"
+edition = "2021"
+homepage = "https://github.com/GuicLuca/RekT_Protocole/wiki"
+categories = ["game-development"]
+license = "MIT"
+
+
+[dependencies]
+log = "0.4.20"
+pretty_logger = "0.1.8"
+quinn = "0.10.2"
+tokio = {version ="1.33.0", features = ["full"]} # async
+rustls = { version = "*", features = ["quic", "dangerous_configuration"] }
+rcgen = "0.11.3"
+bytes = "1.5.0"

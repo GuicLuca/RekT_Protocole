@@ -1,4 +1,4 @@
-name: Build, Test, and Package with Comment Coverage
+name: Build, Test, and Package
 
 on:
   push:
@@ -28,6 +28,41 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
         working-directory: ${{ matrix.workdir }}
 
+      - name: Install NASM (Linux)
+        run: sudo apt-get update && sudo apt-get install -y nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+  
+      - name: Install NASM (MacOS)
+        run: brew update && brew install nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'macOS-latest' }}
+
+      - name: Install winget (Windows)
+        uses: Cyberboss/install-winget@v1
+        if: ${{ matrix.os == 'windows-latest' }}
+        
+      - name: Install NASM (Windows)
+        run: winget install nasm --disable-interactivity --accept-source-agreements
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'windows-latest' }}
+  
+      - name: Set NASM compiler path (Linux)
+        run: export CMAKE_ASM_NASM_COMPILER=/usr/bin/nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+  
+      - name: Set NASM compiler path (MacOS)
+        run: export CMAKE_ASM_NASM_COMPILER=/usr/local/bin/nasm
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'macOS-latest' }}
+  
+      - name: Set NASM compiler path (Windows)
+        run: set CMAKE_ASM_NASM_COMPILER=C:\Program Files\NASM\nasm.exe
+        working-directory: ${{ matrix.workdir }}
+        if: ${{ matrix.os == 'windows-latest' }}
+
+      
       - name: Build for ${{ matrix.os }}
         run: cargo build --release
         working-directory: ${{ matrix.workdir }}

@@ -28,6 +28,7 @@ pub fn get_bytes_from_slice(
     match () {
         _ if to < from => panic!("from is greater than to"),
         _ if to >= buffer.len() => panic!("to is greater than the last index"),
+        _ if to == from => return Vec::new(),
         _ => (),
     }
 

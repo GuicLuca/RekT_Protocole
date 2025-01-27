@@ -1,6 +1,6 @@
 #![allow(unused)]
-mod datagrams;
-mod enums;
-mod libs;
-mod tests;
-mod rekt_common_ffi;
+pub mod datagrams;
+pub mod enums;
+pub mod libs;
+pub mod tests;
+pub mod rekt_common_ffi;

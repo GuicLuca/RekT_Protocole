@@ -17,13 +17,15 @@ impl DtgHeartbeat {
     {
         return [u8::from(self.datagram_type)].into();
     }
+
+    pub const fn get_default_byte_size() -> usize { return 1; }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgHeartbeat {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 1 {
+        if buffer.len() < DtgHeartbeat::get_default_byte_size() {
             return Err("Payload len is to short for a DtgHeartbeat.");
         }
 
@@ -51,13 +53,15 @@ impl DtgHeartbeatRequest {
     {
         return [u8::from(self.datagram_type)].into();
     }
+
+    pub const fn get_default_byte_size() -> usize { return 1; }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgHeartbeatRequest {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < 1 {
+        if buffer.len() < DtgHeartbeatRequest::get_default_byte_size() {
             return Err("Payload len is to short for a DtgHeartbeatRequest.");
         }
 
