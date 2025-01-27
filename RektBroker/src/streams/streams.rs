@@ -25,10 +25,7 @@ pub struct RUnreliableStream {
 }
 
 impl RUnreliableStream {
-    pub fn from_connection(connection: Connection) -> RUnreliableStream
-    {
-        RUnreliableStream {
-            stream: connection
-        }
+    pub fn from_connection(connection: Connection) -> RUnreliableStream {
+        RUnreliableStream { stream: connection }
     }
 }

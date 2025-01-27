@@ -13,24 +13,24 @@ pub struct DtgConnect {
 impl DtgConnect {
     pub const fn new() -> DtgConnect {
         DtgConnect {
-            datagram_type: DatagramType::Connect
+            datagram_type: DatagramType::Connect,
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        return [u8::from(self.datagram_type)].into();
+    pub fn as_bytes(&self) -> Vec<u8> {
+        [u8::from(self.datagram_type)].into()
     }
 
-    pub const fn get_default_byte_size() -> usize { return 1 }
+    pub const fn get_default_byte_size() -> usize {
+        1
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgConnect {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < DtgConnect::get_default_byte_size()
-        {
+        if buffer.len() < DtgConnect::get_default_byte_size() {
             return Err("Payload len is to short for a DtgConnect.");
         }
 
@@ -39,7 +39,6 @@ impl<'a> TryFrom<&'a [u8]> for DtgConnect {
         })
     }
 }
-
 
 //===== Sent to acknowledge the connexion with success
 
@@ -59,25 +58,25 @@ impl DtgConnectAck {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(DtgConnectAck::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.peer_id.to_le_bytes().into_iter());
         bytes.extend(self.heartbeat_period.to_le_bytes().into_iter());
 
-        return bytes;
+        bytes
     }
 
-    pub fn get_default_byte_size() -> usize { return 11 }
+    pub fn get_default_byte_size() -> usize {
+        11
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgConnectAck {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < DtgConnectAck::get_default_byte_size()
-        {
+        if buffer.len() < DtgConnectAck::get_default_byte_size() {
             return Err("Payload len is to short for a DtgConnectAck.");
         }
 
@@ -91,7 +90,6 @@ impl<'a> TryFrom<&'a [u8]> for DtgConnectAck {
         })
     }
 }
-
 
 #[repr(C)]
 pub struct DtgConnectNack {
@@ -112,25 +110,26 @@ impl DtgConnectNack {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        let mut bytes: Vec<u8> = Vec::with_capacity(DtgConnectNack::get_default_byte_size() + self.size as usize);
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(DtgConnectNack::get_default_byte_size() + self.size as usize);
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.size.to_le_bytes().into_iter());
         bytes.extend(&mut self.payload.iter());
 
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 3 }
+    pub const fn get_default_byte_size() -> usize {
+        3
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgConnectNack {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < DtgConnectNack::get_default_byte_size()
-        {
+        if buffer.len() < DtgConnectNack::get_default_byte_size() {
             return Err("Payload len is to short for a RQ_Connect_Ack_Error.");
         }
         let size = get_u16_at_pos(buffer, 1)?;
@@ -138,7 +137,11 @@ impl<'a> TryFrom<&'a [u8]> for DtgConnectNack {
         Ok(DtgConnectNack {
             datagram_type: DatagramType::from(buffer[0]),
             size,
-            payload: get_bytes_from_slice(buffer, DtgConnectNack::get_default_byte_size(), (DtgConnectNack::get_default_byte_size() + size as usize)),
+            payload: get_bytes_from_slice(
+                buffer,
+                DtgConnectNack::get_default_byte_size(),
+                (DtgConnectNack::get_default_byte_size() + size as usize),
+            ),
         })
     }
 }

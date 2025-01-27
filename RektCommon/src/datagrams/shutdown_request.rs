@@ -12,21 +12,22 @@ impl DtgShutdown {
     pub const fn new(reason: EndConnexionReason) -> DtgShutdown {
         DtgShutdown {
             datagram_type: DatagramType::Shutdown,
-            reason
+            reason,
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(DtgShutdown::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.push(u8::from(self.reason));
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 2; }
+    pub const fn get_default_byte_size() -> usize {
+        2
+    }
 }
-impl<'a> TryFrom<&'a [u8]> for DtgShutdown{
+impl<'a> TryFrom<&'a [u8]> for DtgShutdown {
     type Error = &'a str;
 
     fn try_from(buffer: &'a [u8]) -> Result<Self, Self::Error> {
@@ -36,7 +37,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgShutdown{
 
         Ok(DtgShutdown {
             datagram_type: DatagramType::from(buffer[0]),
-            reason: EndConnexionReason::from(buffer[1])
+            reason: EndConnexionReason::from(buffer[1]),
         })
     }
 }

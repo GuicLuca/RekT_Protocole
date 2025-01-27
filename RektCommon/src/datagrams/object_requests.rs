@@ -1,10 +1,10 @@
-use std::collections::HashSet;
-use std::mem::size_of;
 use crate::datagrams::miscellaneous_requests::DtgServerStatusACK;
 use crate::enums::datagram_type::DatagramType;
 use crate::enums::object_request_action::ObjectRequestAction;
 use crate::libs::types::{Flag, ObjectId, Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos, u8_to_vec_be};
+use std::collections::HashSet;
+use std::mem::size_of;
 
 //===== Sent to acknowledge a TOPIC_REQUEST
 #[repr(C)]
@@ -17,7 +17,11 @@ pub struct DtgObjectRequest {
 }
 
 impl DtgObjectRequest {
-    pub fn new(flag: ObjectRequestAction, object_id: ObjectId, topics: HashSet<TopicId>) -> DtgObjectRequest {
+    pub fn new(
+        flag: ObjectRequestAction,
+        object_id: ObjectId,
+        topics: HashSet<TopicId>,
+    ) -> DtgObjectRequest {
         let size: Size = (topics.len() * size_of::<TopicId>()) as Size; // x = size_of(topics)
         DtgObjectRequest {
             datagram_type: DatagramType::ObjectRequest,
@@ -28,24 +32,29 @@ impl DtgObjectRequest {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        let mut bytes: Vec<u8> = Vec::with_capacity(DtgObjectRequest::get_default_byte_size() + self.size as usize); // 3 = DatagramType + size
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(DtgObjectRequest::get_default_byte_size() + self.size as usize); // 3 = DatagramType + size
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.size.to_le_bytes());
         bytes.push(u8::from(self.flag));
         bytes.extend(self.object_id.to_le_bytes());
         // The following line convert a Vec<u64> to his representation as bytes (Vec<u8>)
-        bytes.extend(self.payload.iter()
-            .flat_map(|&x| {
-                let bytes: [u8; 8] = x.to_le_bytes();
-                bytes.into_iter()
-            })
-            .collect::<Vec<u8>>());
-        return bytes;
+        bytes.extend(
+            self.payload
+                .iter()
+                .flat_map(|&x| {
+                    let bytes: [u8; 8] = x.to_le_bytes();
+                    bytes.into_iter()
+                })
+                .collect::<Vec<u8>>(),
+        );
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 12; }
+    pub const fn get_default_byte_size() -> usize {
+        12
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
@@ -59,13 +68,15 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
 
         let mut topics: HashSet<TopicId>;
         if size != 0 {
-            topics = get_bytes_from_slice(buffer, DtgObjectRequest::get_default_byte_size(), (DtgObjectRequest::get_default_byte_size() + size as usize - 1))
-                // Convert the bytes vector to a vector of topics id by grouping u8 into u64
-                .chunks_exact(8)
-                .map(|chunk| {
-                    u64::from_le_bytes(chunk.try_into().unwrap())
-                })
-                .collect();
+            topics = get_bytes_from_slice(
+                buffer,
+                DtgObjectRequest::get_default_byte_size(),
+                (DtgObjectRequest::get_default_byte_size() + size as usize - 1),
+            )
+            // Convert the bytes vector to a vector of topics id by grouping u8 into u64
+            .chunks_exact(8)
+            .map(|chunk| u64::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
         } else {
             topics = HashSet::default();
         }
@@ -101,8 +112,7 @@ impl DtgObjectRequestACK {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(DtgObjectRequestACK::get_default_byte_size());
 
         bytes.push(u8::from(self.datagram_type));
@@ -110,10 +120,12 @@ impl DtgObjectRequestACK {
         bytes.extend(self.object_id.to_le_bytes());
         bytes.extend(self.final_object_id.to_le_bytes());
 
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 18; }
+    pub const fn get_default_byte_size() -> usize {
+        18
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
@@ -139,7 +151,6 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
     }
 }
 
-
 // ===== Sent in case of error for all action (Create update delete)
 #[repr(C)]
 pub struct DtgObjectRequestNACK {
@@ -162,19 +173,21 @@ impl DtgObjectRequestNACK {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        let mut bytes: Vec<u8> = Vec::with_capacity(DtgObjectRequestNACK::get_default_byte_size() + self.size as usize);
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(DtgObjectRequestNACK::get_default_byte_size() + self.size as usize);
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.size.to_le_bytes());
         bytes.push(u8::from(self.flag));
         bytes.extend(self.object_id.to_le_bytes());
         bytes.extend(self.payload.iter());
 
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 12; }
+    pub const fn get_default_byte_size() -> usize {
+        12
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestNACK {
@@ -192,7 +205,11 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestNACK {
             flag: buffer[3],
             size,
             object_id,
-            payload: get_bytes_from_slice(buffer, DtgObjectRequestNACK::get_default_byte_size(), (DtgObjectRequestNACK::get_default_byte_size() + size as usize - 1)),
+            payload: get_bytes_from_slice(
+                buffer,
+                DtgObjectRequestNACK::get_default_byte_size(),
+                (DtgObjectRequestNACK::get_default_byte_size() + size as usize - 1),
+            ),
         })
     }
 }

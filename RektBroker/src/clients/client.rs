@@ -15,15 +15,10 @@ pub struct ConnectionId {
 }
 
 impl ConnectionId {
-    pub fn new(ip_src: IpAddr, port_src: u16) -> ConnectionId
-    {
-        ConnectionId {
-            ip_src,
-            port_src,
-        }
+    pub fn new(ip_src: IpAddr, port_src: u16) -> ConnectionId {
+        ConnectionId { ip_src, port_src }
     }
-    pub fn from_connection(connection: &Connection) -> ConnectionId
-    {
+    pub fn from_connection(connection: &Connection) -> ConnectionId {
         ConnectionId {
             ip_src: connection.remote_address().ip(),
             port_src: connection.remote_address().port(),
@@ -46,8 +41,11 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(connection_id: ConnectionId, connection: Connection, bi_stream: RBiStream) -> Client
-    {
+    pub fn new(
+        connection_id: ConnectionId,
+        connection: Connection,
+        bi_stream: RBiStream,
+    ) -> Client {
         Client {
             id: Client::get_new_id(),
             connection_id,
@@ -56,7 +54,7 @@ impl Client {
         }
     }
     /**
-     * This methods return a unique id for a new client.
+     * This method return a unique id for a new client.
      *
      * @return ClientId
      */
@@ -65,7 +63,8 @@ impl Client {
         return (SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Failed to calculate duration since UNIX_EPOCH")
-            .as_nanos() as ClientId) ^ random::<ClientId>();
+            .as_nanos() as ClientId)
+            ^ random::<ClientId>();
     }
 }
 

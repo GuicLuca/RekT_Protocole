@@ -1,13 +1,12 @@
-// This document contain the config system. It read values from a toml file and
-// then it return it as a rust structure.
+// This document contain the config system. It read values from a toml file, and
+// then it returns it as a rust structure.
 // @author : GuicLuca (lucasguichard127@gmail.com)
 // date : 14/03/2023
 
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Error;
-use serde::{Deserialize, Serialize};
 use toml;
-
 
 // Contain the Server table of the toml file
 #[derive(Serialize, Deserialize, Debug)]
@@ -45,7 +44,7 @@ struct ConfigToml {
 }
 
 // This is the final structure that contain every
-// values of the toml file.
+// value of the toml file.
 #[derive(Debug)]
 pub struct Config {
     pub port: u16,
@@ -66,10 +65,7 @@ impl Config {
     pub fn new() -> Self {
         info!("Loading config.toml file...");
         // 1 - List of path to config files
-        let config_filepath: [&str; 2] = [
-            "./config.toml",
-            "./src/config.toml",
-        ];
+        let config_filepath: [&str; 2] = ["./config.toml", "./src/config.toml"];
 
         // 2 - Loop through each config file to get the first valid one
         let mut content: String = "".to_owned();
@@ -78,7 +74,7 @@ impl Config {
             let result: Result<String, Error> = fs::read_to_string(filepath);
 
             if result.is_ok() {
-                content = result.unwrap_or_else(|err|{
+                content = result.unwrap_or_else(|err| {
                     println!("Failed to unwrap content string. Error:\n{}", err);
                     "".to_owned() // return default value
                 });
@@ -89,17 +85,17 @@ impl Config {
         info!("Reading config.toml file...");
 
         // 3 - Extract the content to a toml object
-        let config_toml: ConfigToml = match toml::from_str(&content) {
-            Ok(config) => config,
-            Err(e) => {
-                println!("Failed to create ConfigToml Object out of config file. Error: {:?}", e);
-                ConfigToml {
-                    server: None,
-                    period: None,
-                    debug: None,
-                }
+        let config_toml: ConfigToml = toml::from_str(&content).unwrap_or_else(|e| {
+            println!(
+                "Failed to create ConfigToml Object out of config file. Error: {:?}",
+                e
+            );
+            ConfigToml {
+                server: None,
+                period: None,
+                debug: None,
             }
-        };
+        });
 
         // 4 - Get every value into local variables
         info!("Creating server config table...");
@@ -107,18 +103,17 @@ impl Config {
         // 4.1 - Server variables
         let (port, packet_buffer_size): (u16, u16) = match config_toml.server {
             Some(server) => {
-                let port: u16 =  match server.port.unwrap_or_else(|| {
-                    println!("Missing field port in table server.");
-                    "3838".to_owned()
-                }).parse::<u16>() {
-                    Ok(value) => {
-                        value
-                    }
-                    Err(err) => {
+                let port: u16 = server
+                    .port
+                    .unwrap_or_else(|| {
+                        println!("Missing field port in table server.");
+                        "3838".to_owned()
+                    })
+                    .parse::<u16>()
+                    .unwrap_or_else(|err| {
                         println!("Failed to parse port into a u16. Error:\n{}", err);
                         3838 // return default value
-                    }
-                };
+                    });
 
                 let packet_buffer_size: u16 = server.packet_buffer_size.unwrap_or_else(|| {
                     println!("Missing field packet_buffer_size in table server.");
@@ -156,14 +151,16 @@ impl Config {
 
         // 4.3 - Debug variables
         info!("Creating debug config table...");
-        let (debug_level,
+        let (
+            debug_level,
             debug_datagram_handler,
             debug_ping_sender,
             debug_data_handler,
             debug_heartbeat_checker,
             debug_topic_handler,
             debug_client_manager,
-            debug_object_handler,): (String, bool, bool, bool, bool, bool, bool, bool) = match config_toml.debug {
+            debug_object_handler,
+        ): (String, bool, bool, bool, bool, bool, bool, bool) = match config_toml.debug {
             Some(debug) => {
                 let d_level: String = debug.debug_level.unwrap_or_else(|| {
                     println!("Missing field debug_level in table debug.");
@@ -198,14 +195,24 @@ impl Config {
                     true // Default value if none found
                 });
 
-                (d_level, d_datagram, d_ping, d_data, d_heart, d_topic, d_manager, d_object)
+                (
+                    d_level, d_datagram, d_ping, d_data, d_heart, d_topic, d_manager, d_object,
+                )
             }
             None => {
                 println!("Missing table debug.");
-                ("trace".to_string(), true, true, true, true, true, true, true) // Default value if none found
+                (
+                    "trace".to_string(),
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                ) // Default value if none found
             }
         };
-
 
         Config {
             port,
@@ -219,7 +226,7 @@ impl Config {
             debug_heartbeat_checker,
             debug_topic_handler,
             debug_client_manager,
-            debug_object_handler
+            debug_object_handler,
         }
     }
 }

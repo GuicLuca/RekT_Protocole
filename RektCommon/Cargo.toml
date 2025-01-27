@@ -24,7 +24,7 @@ license = "MIT"
 crate-type = ["staticlib", "lib"]
 
 [build-dependencies]
-cbindgen = "0.26.0"
+cbindgen = "0.28.0"
 
 [dependencies]
 log = "0.4.20"

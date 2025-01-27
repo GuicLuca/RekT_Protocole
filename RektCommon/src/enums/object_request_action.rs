@@ -13,7 +13,6 @@ pub enum ObjectRequestAction {
     Unknown,
 }
 
-
 /**
  * This function convert an ObjectRequestAction to an u8
  *

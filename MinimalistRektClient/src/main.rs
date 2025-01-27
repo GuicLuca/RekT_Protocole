@@ -11,10 +11,13 @@ use quinn::{ClientConfig, Connection, Endpoint};
 
 static PAYLOAD_SIZE: usize = 1024;
 
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    pretty_logger::init(Destination::Stdout, "info".parse().unwrap(), Theme::default())?;
+    pretty_logger::init(
+        Destination::Stdout,
+        "info".parse().unwrap(),
+        Theme::default(),
+    )?;
 
     let crypto = rustls::ClientConfig::builder()
         .with_safe_defaults()
@@ -43,31 +46,32 @@ async fn client(config: ClientConfig) -> Result<(), Box<dyn Error>> {
     let mut endpoint = Endpoint::client(SocketAddr::from_str("127.0.0.1:6666")?)?;
     endpoint.set_default_client_config(config);
 
-
     // Connect to the server passing in the server name which is supposed to be in the server certificate.
-    let connection = endpoint.connect(SocketAddr::from_str("127.0.0.1:3838")?, "localhost")?.await?;
+    let connection = endpoint
+        .connect(SocketAddr::from_str("127.0.0.1:3838")?, "localhost")?
+        .await?;
 
     // Start transferring, receiving data, see data transfer page.
     // TODO : Implementing connection process on server
-    // TODO : Implementing stream management on server + test message transfert
+    // TODO : Implementing stream management on server + test message transfer
     // TODO : Implementing disconnection
     // TODO : Implementing heartbeat + ping
     // TODO : Stress test 1
     //receive_bidirectional_stream(connection).await;
-    connection.send_datagram(bytes::Bytes::from("Coucou from client"))?;
+    connection.send_datagram(bytes::Bytes::from("Hello from client"))?;
     while let Ok(received_bytes) = connection.read_datagram().await {
         // Because it is a unidirectional stream, we can only receive not send back.
-        println!("Unrealiable message recieved: {}", String::from_utf8(received_bytes.to_vec())?);
+        println!(
+            "Unreliable message received: {}",
+            String::from_utf8(received_bytes.to_vec())?
+        );
     }
-
 
     Ok(())
 }
 
 async fn open_bidirectional_stream(connection: Connection) -> Result<(), Box<dyn Error>> {
-    let (mut send, mut recv) = connection
-        .open_bi()
-        .await?;
+    let (mut send, mut recv) = connection.open_bi().await?;
 
     send.write_all(b"test").await?;
     send.finish().await?;
@@ -81,7 +85,10 @@ async fn open_bidirectional_stream(connection: Connection) -> Result<(), Box<dyn
 async fn receive_bidirectional_stream(connection: Connection) -> Result<(), Box<dyn Error>> {
     while let Ok((mut send, mut recv)) = connection.accept_bi().await {
         // Because it is a bidirectional stream, we can both send and receive.
-        info!("Message received: {}", String::from_utf8(recv.read_to_end(PAYLOAD_SIZE).await?)?);
+        info!(
+            "Message received: {}",
+            String::from_utf8(recv.read_to_end(PAYLOAD_SIZE).await?)?
+        );
 
         send.write_all(b"response").await?;
         info!("Sent message \"response\" to the server.");
@@ -93,9 +100,7 @@ async fn receive_bidirectional_stream(connection: Connection) -> Result<(), Box<
 }
 
 async fn open_unidirectional_stream(connection: Connection) -> Result<(), Box<dyn Error>> {
-    let mut send = connection
-        .open_uni()
-        .await?;
+    let mut send = connection.open_uni().await?;
 
     send.write_all(b"test").await?;
     send.finish().await?;
@@ -112,7 +117,6 @@ async fn receive_unidirectional_stream(connection: Connection) -> Result<(), Box
     Ok(())
 }
 
-
 // Implementation of `ServerCertVerifier` that verifies everything as trustworthy.
 struct SkipServerVerification;
 
@@ -128,11 +132,10 @@ impl rustls::client::ServerCertVerifier for SkipServerVerification {
         _end_entity: &rustls::Certificate,
         _intermediates: &[rustls::Certificate],
         _server_name: &rustls::ServerName,
-        _scts: &mut dyn Iterator<Item=&[u8]>,
+        _scts: &mut dyn Iterator<Item = &[u8]>,
         _ocsp_response: &[u8],
         _now: std::time::SystemTime,
     ) -> Result<rustls::client::ServerCertVerified, rustls::Error> {
         Ok(rustls::client::ServerCertVerified::assertion())
     }
 }
-

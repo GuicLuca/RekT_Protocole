@@ -1,14 +1,13 @@
 #![allow(non_snake_case)]
 
-use std::collections::HashSet;
-use std::mem::size_of;
-use std::sync::Arc;
 use crate::datagrams::connect_requests::DtgConnect;
 use crate::datagrams::data_request::DtgData;
 use crate::datagrams::heartbeat_requests::{DtgHeartbeat, DtgHeartbeatRequest};
 use crate::datagrams::latency_requests::{DtgPing, DtgPong};
 use crate::datagrams::miscellaneous_requests::{DtgServerStatus, DtgServerStatusACK};
-use crate::datagrams::object_requests::{DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK};
+use crate::datagrams::object_requests::{
+    DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK,
+};
 use crate::datagrams::shutdown_request::DtgShutdown;
 use crate::datagrams::topic_request::{DtgTopicRequest, DtgTopicRequestAck, DtgTopicRequestNack};
 use crate::enums::datagram_type::DatagramType;
@@ -19,13 +18,16 @@ use crate::enums::topic_action::TopicAction;
 use crate::enums::topic_response::TopicResponse;
 use crate::libs::types::{ClientId, ObjectId, PingId, Size, TopicId};
 use crate::libs::utils::vec_to_u8;
+use std::collections::HashSet;
+use std::mem::size_of;
+use std::sync::Arc;
 
 // -------------------------------------------------------
 //   Connect
 // -------------------------------------------------------
 #[test]
 fn test_DtgConnect_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::Connect));
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::Connect)];
     let dtg = DtgConnect::new();
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -38,7 +40,7 @@ fn test_DtgConnect_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -48,10 +50,10 @@ fn test_DtgConnect_try_from() {
 // -------------------------------------------------------
 #[test]
 fn test_DtgShutdown_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::Shutdown), u8::from(Shutdown));
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::Shutdown), u8::from(Shutdown)];
     let dtg = DtgShutdown::new(Shutdown);
     assert_eq!(dtg.as_bytes(), bytes);
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::Shutdown), u8::from(TimeOut));
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::Shutdown), u8::from(TimeOut)];
     let dtg = DtgShutdown::new(TimeOut);
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -64,7 +66,7 @@ fn test_DtgShutdown_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -74,7 +76,7 @@ fn test_DtgShutdown_try_from() {
 // -------------------------------------------------------
 #[test]
 fn test_DtgHeartbeat_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::Heartbeat));
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::Heartbeat)];
     let dtg = DtgHeartbeat::new();
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -87,14 +89,14 @@ fn test_DtgHeartbeat_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
 
 #[test]
 fn test_DtgHeartbeatRequest_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::HeartbeatRequest));
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::HeartbeatRequest)];
     let dtg = DtgHeartbeatRequest::new();
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -107,7 +109,7 @@ fn test_DtgHeartbeatRequest_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -117,7 +119,7 @@ fn test_DtgHeartbeatRequest_try_from() {
 // -------------------------------------------------------
 #[test]
 fn test_DtgPing_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::Ping), 127u8);
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::Ping), 127u8];
     let dtg = DtgPing::new(127);
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -130,14 +132,14 @@ fn test_DtgPing_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
 
 #[test]
 fn test_DtgPong_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::Pong), 127u8);
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::Pong), 127u8];
     let dtg = DtgPong::new(127);
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -150,7 +152,7 @@ fn test_DtgPong_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -160,7 +162,7 @@ fn test_DtgPong_try_from() {
 // -------------------------------------------------------
 #[test]
 fn test_DtgServerStatus_as_bytes() {
-    let bytes: Vec<u8> = vec!(u8::from(DatagramType::ServerStatus));
+    let bytes: Vec<u8> = vec![u8::from(DatagramType::ServerStatus)];
     let dtg = DtgServerStatus::new();
     assert_eq!(dtg.as_bytes(), bytes);
 }
@@ -173,14 +175,14 @@ fn test_DtgServerStatus_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
 
 #[test]
 fn test_DtgServerStatusAck_as_bytes() {
-    let mut bytes: Vec<u8> = vec!(u8::from(DatagramType::ServerStatusAck));
+    let mut bytes: Vec<u8> = vec![u8::from(DatagramType::ServerStatusAck)];
     bytes.extend(ClientId::MAX.to_le_bytes());
     let dtg = DtgServerStatusACK::new(ClientId::MAX);
     assert_eq!(dtg.as_bytes(), bytes);
@@ -194,9 +196,8 @@ fn test_DtgServerStatusAck_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
-
-        assert!(false, "dtg_from is invalid : {}",  dtg_from.err().unwrap());
+    } else {
+        assert!(false, "dtg_from is invalid : {}", dtg_from.err().unwrap());
     }
 }
 
@@ -231,7 +232,7 @@ fn test_DtgData_try_from() {
 
     if dtg_from.is_ok() {
         assert_eq!(dtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -243,17 +244,22 @@ fn test_DtgData_try_from() {
 fn test_DtgObjectRequest_as_bytes() {
     let ObjectAction = ObjectRequestAction::Create;
     let ObjectId = 641635874654 as ObjectId;
-    let topics = HashSet::from([64658746584,6546654,4654654654,98986354,65465468]);
+    let topics = HashSet::from([64658746584, 6546654, 4654654654, 98986354, 65465468]);
 
     let mut bytes: Vec<u8> = Vec::new();
     bytes.push(u8::from(DatagramType::ObjectRequest));
-    bytes.extend(((topics.len() * size_of::<TopicId>())as Size).to_le_bytes());
+    bytes.extend(((topics.len() * size_of::<TopicId>()) as Size).to_le_bytes());
     bytes.push(u8::from(ObjectAction));
     bytes.extend(ObjectId.to_le_bytes());
-    bytes.extend(topics.iter().flat_map(|&x: &TopicId| {
-        let bytes: [u8; 8] = x.to_le_bytes();
-        bytes.into_iter()
-    }).collect::<Vec<u8>>());
+    bytes.extend(
+        topics
+            .iter()
+            .flat_map(|&x: &TopicId| {
+                let bytes: [u8; 8] = x.to_le_bytes();
+                bytes.into_iter()
+            })
+            .collect::<Vec<u8>>(),
+    );
 
     let dtg = DtgObjectRequest::new(ObjectAction, ObjectId, topics);
     assert_eq!(dtg.as_bytes(), bytes);
@@ -263,7 +269,7 @@ fn test_DtgObjectRequest_as_bytes() {
 fn test_DtgObjectRequest_try_from() {
     let ObjectAction = ObjectRequestAction::Subscribe;
     let ObjectId = 68746541687496 as ObjectId;
-    let topics = HashSet::from([1,2,3,4,5]);
+    let topics = HashSet::from([1, 2, 3, 4, 5]);
 
     let dtg = Arc::from(DtgObjectRequest::new(ObjectAction, ObjectId, topics));
     let dtg_ref = dtg.clone().as_bytes();
@@ -276,14 +282,14 @@ fn test_DtgObjectRequest_try_from() {
         assert_eq!(dtg_from.flag, dtg.flag);
         assert_eq!(dtg_from.datagram_type, dtg.datagram_type);
         assert_eq!(dtg_from.size, dtg.size);
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
 
 #[test]
 fn test_DtgObjectRequestACK_as_bytes() {
-    let flag = vec_to_u8(vec!(0,0,0,0,0,1,0,0)); // delete action
+    let flag = vec_to_u8(vec![0, 0, 0, 0, 0, 1, 0, 0]); // delete action
     let objectId = 941636875874654 as ObjectId;
 
     let mut bytes: Vec<u8> = Vec::new();
@@ -295,7 +301,7 @@ fn test_DtgObjectRequestACK_as_bytes() {
     let dtg = DtgObjectRequestACK::new(flag, objectId, 0);
     assert_eq!(dtg.as_bytes(), bytes);
 
-    let flag = vec_to_u8(vec!(0,0,0,0,0,0,0,1)); // delete action
+    let flag = vec_to_u8(vec![0, 0, 0, 0, 0, 0, 0, 1]); // delete action
     let finalObjectId = 648687 as ObjectId;
 
     let mut bytes: Vec<u8> = Vec::new();
@@ -310,7 +316,7 @@ fn test_DtgObjectRequestACK_as_bytes() {
 
 #[test]
 fn test_DtgObjectRequestACK_try_from() {
-    let flag = vec_to_u8(vec!(0,0,0,1,0,0,0,0)); // subscribe action
+    let flag = vec_to_u8(vec![0, 0, 0, 1, 0, 0, 0, 0]); // subscribe action
     let ObjectId = 98712341687496 as ObjectId;
 
     let dtg = Arc::from(DtgObjectRequestACK::new(flag, ObjectId, 0));
@@ -319,11 +325,11 @@ fn test_DtgObjectRequestACK_try_from() {
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 
-    let flag = vec_to_u8(vec!(0,0,0,0,0,0,0,1)); // create action
+    let flag = vec_to_u8(vec![0, 0, 0, 0, 0, 0, 0, 1]); // create action
     let finalObjectId = 3468746 as ObjectId;
 
     let dtg = Arc::from(DtgObjectRequestACK::new(flag, ObjectId, finalObjectId));
@@ -332,14 +338,14 @@ fn test_DtgObjectRequestACK_try_from() {
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
 
 #[test]
 fn test_DtgObjectRequestNACK_as_bytes() {
-    let flag = vec_to_u8(vec!(0,0,0,0,0,0,1,0)); // modify action
+    let flag = vec_to_u8(vec![0, 0, 0, 0, 0, 0, 1, 0]); // modify action
     let objectId = 4654 as ObjectId;
     let reason = "Fail to modify the object because the object id is invalid.";
 
@@ -356,7 +362,7 @@ fn test_DtgObjectRequestNACK_as_bytes() {
 
 #[test]
 fn test_DtgObjectRequestNACK_try_from() {
-    let flag = vec_to_u8(vec!(0,0,0,0,0,0,1,0)); // modify action
+    let flag = vec_to_u8(vec![0, 0, 0, 0, 0, 0, 1, 0]); // modify action
     let ObjectId = 98712341687496 as ObjectId;
     let reason = "Fail to modify the object because the object id is invalid.";
 
@@ -366,7 +372,7 @@ fn test_DtgObjectRequestNACK_try_from() {
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -399,7 +405,7 @@ fn test_DtgOTopicRequest_try_from() {
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -429,7 +435,7 @@ fn test_DtgTopicRequestACK_try_from() {
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }
@@ -460,7 +466,7 @@ fn test_DtgTopicRequestNACK_try_from() {
 
     if ResultDtg_from.is_ok() {
         assert_eq!(ResultDtg_from.unwrap().as_bytes(), dtg.as_bytes());
-    }else {
+    } else {
         assert!(false, "dtg_from is invalid");
     }
 }

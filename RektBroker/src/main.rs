@@ -2,7 +2,7 @@
 // must never be blocked by any method ! The whole project use tokio and work
 // asynchronously to allow a maximum bandwidth computing. The goal of the broker is
 // to handle 100Gb/s.
-// For each features the memory management and the cpu usage should be in the middle of the reflexion.
+// For each feature the memory management and the cpu usage should be in the middle of the reflexion.
 //
 // @author : GuicLuca (lucasguichard127@gmail.com)
 // date : 21/10/2023\
@@ -18,34 +18,33 @@ use std::io::Bytes;
 use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use crossbeam_queue::ArrayQueue;
-use dashmap::DashMap;
 use dashmap::mapref::one::RefMut;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
 use local_ip_address::local_ip;
 use parking_lot::{Condvar, Mutex};
 use quinn::{Connecting, Connection, ConnectionError, Endpoint, ServerConfig};
 use rustls::{Certificate, PrivateKey};
 use serde::Serialize;
-use tokio::{join, task, try_join};
 use tokio::net::UdpSocket;
 use tokio::task::JoinHandle;
+use tokio::{join, task, try_join};
 
 use crate::clients::client::{Client, ConnectionId, Packet};
 use crate::errors::Error;
 use crate::prelude::{ClientId, ClientMap, Config, Error::InitializationError, ServerSocket};
 use crate::streams::streams::RBiStream;
 
+mod clients;
 mod config;
 mod errors;
-mod prelude;
-mod clients;
-mod streams;
 mod job_system;
-
+mod prelude;
+mod streams;
 
 lazy_static! {
     // Global config and general purpose vars
@@ -110,11 +109,11 @@ async fn main() {
     }
 }
 
-fn init_quic_connection() -> Result<(ServerConfig), Error>
-{
+fn init_quic_connection() -> Result<(ServerConfig), Error> {
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".to_string()])?;
     let key = PrivateKey(cert.serialize_private_key_der());
-    let server_config = ServerConfig::with_single_cert(vec!(Certificate(cert.serialize_der()?)), key)?;
+    let server_config =
+        ServerConfig::with_single_cert(vec![Certificate(cert.serialize_der()?)], key)?;
 
     Ok((server_config))
 }
@@ -126,10 +125,12 @@ async fn open_endpoint() -> prelude::Result<()> {
             quic_config
         }
         Err(err) => {
-            return Err(InitializationError(format!("Quic initialization failed : {}", err.to_string())));
+            return Err(InitializationError(format!(
+                "Quic initialization failed : {}",
+                err.to_string()
+            )));
         }
     };
-
 
     // Fetch the local ip address and config port to start the server
     let addr: SocketAddr = match local_ip() {
@@ -139,7 +140,10 @@ async fn open_endpoint() -> prelude::Result<()> {
         }
         Err(err) => {
             // can't start the server if the local ip can't be reach
-            return Err(InitializationError(format!("Failed to get local IP:\n{}", err)));
+            return Err(InitializationError(format!(
+                "Failed to get local IP:\n{}",
+                err
+            )));
         }
     };
 
@@ -149,35 +153,37 @@ async fn open_endpoint() -> prelude::Result<()> {
     // Start iterating over incoming connections.
     while let Some(conn) = endpoint.accept().await {
         let connection_process = handle_connection(conn);
-        tokio::spawn(async move { connection_process.await; });
+        tokio::spawn(async move {
+            connection_process.await;
+        });
     }
 
     Ok(())
 }
-
 
 async fn handle_datagram(packet: Packet) {
     // TODO : Handle packet according the source and the datagram
 
     // 1 - fetch a ref ot the client :
     let client = match CLIENT_MAP.get_mut(&packet.source) {
-        None => { return; }
-        Some(entry) => { entry }
+        None => {
+            return;
+        }
+        Some(entry) => entry,
     };
 
     // 2 - build the datagram struct + respond to it
 
-
-    client.unreliable_stream.stream.send_datagram(bytes::Bytes::from("Un Packet unreliable"));
+    client
+        .unreliable_stream
+        .stream
+        .send_datagram(bytes::Bytes::from("Un Packet unreliable"));
 }
-
 
 async fn handle_connection(pending_connection: Connecting) -> prelude::Result<()> {
     // wait for connection handshake
     let mut connection = match pending_connection.await {
-        Ok(conn) => {
-            conn
-        }
+        Ok(conn) => conn,
         Err(error) => {
             error!("New connection attempted but failed. Error : {}", error);
             return Err(error.into());
@@ -186,16 +192,15 @@ async fn handle_connection(pending_connection: Connecting) -> prelude::Result<()
 
     // Open the bidirectional stream to this client
     let connection_id = ConnectionId::from_connection(&connection);
-    info!("New connection received from {}\nOpening a bi-stream to this connection", connection_id);
-    let (mut sender, mut receiver) = connection
-        .open_bi()
-        .await?;
+    info!(
+        "New connection received from {}\nOpening a bi-stream to this connection",
+        connection_id
+    );
+    let (mut sender, mut receiver) = connection.open_bi().await?;
 
     // Store the client to the static hashmap.
     let client = Client::new(connection_id, connection, RBiStream { sender, receiver });
     CLIENT_MAP.entry(connection_id).insert(client);
 
-
     Ok(())
 }
-

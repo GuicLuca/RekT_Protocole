@@ -40,7 +40,7 @@ impl From<u8> for TopicAction {
         match value {
             0x00 => TopicAction::Subscribe,
             0xFF => TopicAction::Unsubscribe,
-            _ => TopicAction::Unknown
+            _ => TopicAction::Unknown,
         }
     }
 }

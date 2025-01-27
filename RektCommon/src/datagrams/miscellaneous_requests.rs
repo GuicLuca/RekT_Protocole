@@ -1,7 +1,7 @@
-use std::mem::size_of;
 use crate::enums::datagram_type::DatagramType;
 use crate::libs::types::ClientId;
 use crate::libs::utils::get_u64_at_pos;
+use std::mem::size_of;
 
 //===== Sent to know the server status
 #[repr(C)]
@@ -12,16 +12,17 @@ pub struct DtgServerStatus {
 impl DtgServerStatus {
     pub const fn new() -> DtgServerStatus {
         DtgServerStatus {
-            datagram_type: DatagramType::ServerStatus
+            datagram_type: DatagramType::ServerStatus,
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        return [u8::from(self.datagram_type)].into();
+    pub fn as_bytes(&self) -> Vec<u8> {
+        [u8::from(self.datagram_type)].into()
     }
 
-    pub const fn get_default_byte_size() -> usize { return 1; }
+    pub const fn get_default_byte_size() -> usize {
+        1
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgServerStatus {
@@ -53,17 +54,17 @@ impl DtgServerStatusACK {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(DtgServerStatusACK::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.connected_client.to_le_bytes());
 
-        return bytes;
+        bytes
     }
 
-
-    pub const fn get_default_byte_size() -> usize { return 9; }
+    pub const fn get_default_byte_size() -> usize {
+        9
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgServerStatusACK {

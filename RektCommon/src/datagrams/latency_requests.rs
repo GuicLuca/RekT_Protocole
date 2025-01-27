@@ -16,15 +16,16 @@ impl DtgPing {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(DtgPing::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.push(self.ping_id);
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 2; }
+    pub const fn get_default_byte_size() -> usize {
+        2
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgPing {
@@ -51,18 +52,22 @@ pub struct DtgPong {
 
 impl DtgPong {
     pub const fn new(ping_id: PingId) -> DtgPong {
-        DtgPong { datagram_type: DatagramType::Pong, ping_id }
+        DtgPong {
+            datagram_type: DatagramType::Pong,
+            ping_id,
+        }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
+    pub fn as_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(DtgPong::get_default_byte_size());
         bytes.push(u8::from(self.datagram_type));
         bytes.push(self.ping_id);
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 2; }
+    pub const fn get_default_byte_size() -> usize {
+        2
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgPong {

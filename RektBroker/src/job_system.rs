@@ -1,9 +1,9 @@
 use std::sync::atomic::Ordering;
 
-use tokio::{join, task};
 use tokio::task::JoinHandle;
+use tokio::{join, task};
 
-use crate::{PACKET_BUFFER, prelude, SERVER_IS_RUNNING, WORKER_CONDVAR};
+use crate::{prelude, PACKET_BUFFER, SERVER_IS_RUNNING, WORKER_CONDVAR};
 
 pub async fn init_job_system() -> prelude::Result<()> {
     let num_cores = num_cpus::get(); // Get the number of physical cores
@@ -12,7 +12,9 @@ pub async fn init_job_system() -> prelude::Result<()> {
 
     for _ in 0..num_cores {
         workers.push(task::spawn_blocking(move || {
-            tokio::runtime::Runtime::new().unwrap().block_on(js_worker());
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(js_worker());
         }));
     }
 

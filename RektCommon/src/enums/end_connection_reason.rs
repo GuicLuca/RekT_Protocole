@@ -12,7 +12,7 @@ pub enum EndConnexionReason {
 }
 
 /**
- * This function convert a u8 to an EndConnexionReason
+ * This function convert an u8 to an EndConnexionReason
  *
  * @param value: u8, The source to convert
  *

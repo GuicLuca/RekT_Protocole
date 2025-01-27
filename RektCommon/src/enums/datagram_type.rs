@@ -38,7 +38,7 @@ pub enum DatagramType {
  *
  * @return string, the corresponding name
  */
-pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str{
+pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str {
     match datagram {
         DatagramType::Connect => "Connect",
         DatagramType::ConnectAck => "Connect_ACK",
@@ -63,7 +63,7 @@ pub fn display_datagram_type<'a>(datagram: DatagramType) -> &'a str{
 }
 
 /**
- * This function convert a u8 to a DatagramType
+ * This function convert an u8 to a DatagramType
  *
  * @param value: u8, The source to convert
  *
@@ -91,7 +91,7 @@ impl From<u8> for DatagramType {
             0x08 => DatagramType::ObjectRequestAck,
             0x18 => DatagramType::ObjectRequestNack,
             0x42 => DatagramType::Data,
-            _ => DatagramType::Unknown
+            _ => DatagramType::Unknown,
         }
     }
 }

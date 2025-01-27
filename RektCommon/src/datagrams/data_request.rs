@@ -6,10 +6,10 @@ use crate::libs::utils::{get_u16_at_pos, get_u32_at_pos, get_u64_at_pos};
 #[no_mangle]
 pub struct DtgData {
     pub datagram_type: DatagramType, // 1 byte
-    pub size: Size, // 2 bytes (u16)
-    pub sequence_number: u32, // 4 bytes (u32)
-    pub topic_id: TopicId, // 8 bytes (u64)
-    pub payload: Vec<u8>, // size bytes
+    pub size: Size,                  // 2 bytes (u16)
+    pub sequence_number: u32,        // 4 bytes (u32)
+    pub topic_id: TopicId,           // 8 bytes (u64)
+    pub payload: Vec<u8>,            // size bytes
 }
 
 impl DtgData {
@@ -23,18 +23,20 @@ impl DtgData {
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        let mut bytes: Vec<u8> = Vec::with_capacity(DtgData::get_default_byte_size() + self.size as usize);
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> =
+            Vec::with_capacity(DtgData::get_default_byte_size() + self.size as usize);
         bytes.push(u8::from(self.datagram_type));
         bytes.extend(self.size.to_le_bytes());
         bytes.extend(self.sequence_number.to_le_bytes());
         bytes.extend(self.topic_id.to_le_bytes());
         bytes.extend(self.payload.iter());
-        return bytes;
+        bytes
     }
 
-    pub const fn get_default_byte_size() -> usize { return 15; }
+    pub const fn get_default_byte_size() -> usize {
+        15
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgData {
@@ -53,7 +55,9 @@ impl<'a> TryFrom<&'a [u8]> for DtgData {
             size,
             sequence_number,
             topic_id,
-            payload: buffer[DtgData::get_default_byte_size()..DtgData::get_default_byte_size() + size as usize].into(),
+            payload: buffer[DtgData::get_default_byte_size()
+                ..DtgData::get_default_byte_size() + size as usize]
+                .into(),
         })
     }
 }

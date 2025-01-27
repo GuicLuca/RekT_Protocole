@@ -12,7 +12,7 @@
 #include <new>
 
 
-///  * DatagramType are used to translate request type  * to the corresponding hexadecimal code.
+///  * DatagramType are used to translate request type  * to the corresponding hexadecimal code.
 enum class DatagramType : uint8_t {
     Connect,
     ConnectAck,
@@ -35,14 +35,14 @@ enum class DatagramType : uint8_t {
     Unknown,
 };
 
-///  * End connexion reasons are used to  * detail the reason of the shutdown request.
+///  * End connexion reasons are used to  * detail the reason of the shutdown request.
 enum class EndConnexionReason : uint8_t {
     Shutdown,
     TimeOut,
     Unknown,
 };
 
-///  * ObjectRequestAction are all possible action in OBJECT_REQUEST datagram.
+///  * ObjectRequestAction are all possible action in OBJECT_REQUEST datagram.
 enum class ObjectRequestAction : uint8_t {
     Create,
     Update,
@@ -52,14 +52,14 @@ enum class ObjectRequestAction : uint8_t {
     Unknown,
 };
 
-///  * Topics action are all actions that  * a peer can do in a TOPICS_REQUEST
+///  * Topics action are all actions that  * a peer can do in a TOPICS_REQUEST
 enum class TopicAction : uint8_t {
     Subscribe,
     Unsubscribe,
     Unknown,
 };
 
-///  * Topics response are all possible responses  * type to a TOPICS_REQUEST
+///  * Topics response are all possible responses  * type to a TOPICS_REQUEST
 enum class TopicResponse : uint8_t {
     SubSuccess,
     SubFailure,
@@ -83,6 +83,7 @@ struct VecU8 {
 
 };
 
+/// This is the type used to represent a ClientId.
 using ClientId = uint64_t;
 
 struct DtgConnectAck {
@@ -121,6 +122,8 @@ struct DtgConnect {
 
 };
 
+///  * # Common used types
+/// This is the type used to represent the size of a message.
 using Size = uint16_t;
 
 struct CDtgConnectNack {
@@ -138,6 +141,7 @@ struct CDtgConnectNack {
 
 };
 
+/// This is the type used to normalize the size of the enum used as flag
 using TopicId = uint64_t;
 
 struct CDtgData {
@@ -179,8 +183,10 @@ struct DtgHeartbeatRequest {
 
 };
 
+/// This is the type used to represent the flag of a message.
 using Flag = uint8_t;
 
+/// This is the type used to represent an ObjectId.
 using ObjectId = uint64_t;
 
 struct CDtgObjectRequestACK {
@@ -234,6 +240,7 @@ struct CDtgObjectRequest {
 
 };
 
+/// This is the type used to represent a PingID.
 using PingId = uint8_t;
 
 struct DtgPing {
@@ -414,4 +421,4 @@ void vec_u8_push_bytes(VecU8 *v, ByteSlice bytes);
 
 void vec_u8_reserve(VecU8 *v, size_t len);
 
-} // extern "C"
+}  // extern "C"

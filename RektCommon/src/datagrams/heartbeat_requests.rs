@@ -9,16 +9,17 @@ pub struct DtgHeartbeat {
 impl DtgHeartbeat {
     pub const fn new() -> DtgHeartbeat {
         DtgHeartbeat {
-            datagram_type: DatagramType::Heartbeat
+            datagram_type: DatagramType::Heartbeat,
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        return [u8::from(self.datagram_type)].into();
+    pub fn as_bytes(&self) -> Vec<u8> {
+        [u8::from(self.datagram_type)].into()
     }
 
-    pub const fn get_default_byte_size() -> usize { return 1; }
+    pub const fn get_default_byte_size() -> usize {
+        1
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgHeartbeat {
@@ -45,16 +46,17 @@ pub struct DtgHeartbeatRequest {
 impl DtgHeartbeatRequest {
     pub const fn new() -> DtgHeartbeatRequest {
         DtgHeartbeatRequest {
-            datagram_type: DatagramType::HeartbeatRequest
+            datagram_type: DatagramType::HeartbeatRequest,
         }
     }
 
-    pub fn as_bytes(&self) -> Vec<u8>
-    {
-        return [u8::from(self.datagram_type)].into();
+    pub fn as_bytes(&self) -> Vec<u8> {
+        [u8::from(self.datagram_type)].into()
     }
 
-    pub const fn get_default_byte_size() -> usize { return 1; }
+    pub const fn get_default_byte_size() -> usize {
+        1
+    }
 }
 
 impl<'a> TryFrom<&'a [u8]> for DtgHeartbeatRequest {

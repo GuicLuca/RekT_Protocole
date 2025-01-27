@@ -46,7 +46,7 @@ impl From<u8> for TopicResponse {
             0x0F => TopicResponse::SubFailure,
             0xF0 => TopicResponse::UnsubSuccess,
             0xFF => TopicResponse::UnsubFailure,
-            _ => TopicResponse::Unknown
+            _ => TopicResponse::Unknown,
         }
     }
 }
