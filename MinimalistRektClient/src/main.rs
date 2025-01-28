@@ -9,6 +9,9 @@ use log::{error, info};
 use pretty_logger::{Destination, Theme};
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::{ClientConfig, Connection, Endpoint};
+use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified};
+use quinn::rustls::{DigitallySignedStruct, SignatureScheme};
+use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 
 static PAYLOAD_SIZE: usize = 1024;
 
@@ -20,11 +23,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Theme::default(),
     )?;
 
-    let crypto = quinn::rustls::ClientConfig::builder()
-        .with_root_certificates(SkipServerVerification::new())
+    let mut crypto = quinn::rustls::ClientConfig::builder().dangerous()
+        .with_custom_certificate_verifier(SkipServerVerification::new())
         .with_no_client_auth();
 
-    let client_config = ClientConfig::new(Arc::new(QuicClientConfig::try_from(crypto)?));
+    let mut client_config = ClientConfig::new(Arc::new(QuicClientConfig::try_from(crypto)?));
 
     let mut iter: u64 = 0;
 
@@ -118,6 +121,7 @@ async fn receive_unidirectional_stream(connection: Connection) -> Result<(), Box
 }
 
 // Implementation of `ServerCertVerifier` that verifies everything as trustworthy.
+#[derive(Debug)]
 struct SkipServerVerification;
 
 impl SkipServerVerification {
@@ -126,16 +130,30 @@ impl SkipServerVerification {
     }
 }
 
-impl rustls::client::ServerCertVerifier for SkipServerVerification {
-    fn verify_server_cert(
-        &self,
-        _end_entity: &rustls::Certificate,
-        _intermediates: &[rustls::Certificate],
-        _server_name: &rustls::ServerName,
-        _scts: &mut dyn Iterator<Item = &[u8]>,
-        _ocsp_response: &[u8],
-        _now: std::time::SystemTime,
-    ) -> Result<rustls::client::ServerCertVerified, rustls::Error> {
-        Ok(rustls::client::ServerCertVerified::assertion())
+impl quinn::rustls::client::danger::ServerCertVerifier for SkipServerVerification {
+    fn verify_server_cert(&self, end_entity: &CertificateDer<'_>, intermediates: &[CertificateDer<'_>], server_name: &ServerName<'_>, ocsp_response: &[u8], now: UnixTime) -> Result<ServerCertVerified, quinn::rustls::Error> {
+        Ok(ServerCertVerified::assertion())
+    }
+    
+    fn verify_tls12_signature(&self, message: &[u8], cert: &CertificateDer<'_>, dss: &DigitallySignedStruct) -> Result<HandshakeSignatureValid, quinn::rustls::Error> {
+        Ok(HandshakeSignatureValid::assertion())
+    }
+
+    fn verify_tls13_signature(&self, message: &[u8], cert: &CertificateDer<'_>, dss: &DigitallySignedStruct) -> Result<HandshakeSignatureValid, quinn::rustls::Error> {
+        Ok(HandshakeSignatureValid::assertion())
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        vec![
+            SignatureScheme::RSA_PSS_SHA256,
+            SignatureScheme::RSA_PSS_SHA384,
+            SignatureScheme::RSA_PSS_SHA512,
+            SignatureScheme::RSA_PKCS1_SHA256,
+            SignatureScheme::RSA_PKCS1_SHA384,
+            SignatureScheme::RSA_PKCS1_SHA512,
+            SignatureScheme::ECDSA_NISTP256_SHA256,
+            SignatureScheme::ECDSA_NISTP384_SHA384,
+            SignatureScheme::ECDSA_NISTP521_SHA512,
+        ]
     }
 }
