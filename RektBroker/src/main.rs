@@ -8,6 +8,7 @@
 // date : 21/10/2023\
 
 #![allow(unused)] // remove this line in production
+#![allow(unused_doc_comments)]
 
 #[macro_use]
 extern crate log;
@@ -28,6 +29,9 @@ use lazy_static::lazy_static;
 use local_ip_address::local_ip;
 use parking_lot::{Condvar, Mutex};
 use quinn::{Connecting, Connection, ConnectionError, Endpoint, ServerConfig};
+use quinn::rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use quinn::rustls::pki_types::pem::PemObject;
+use rcgen::CertifiedKey;
 use rustls::{Certificate, PrivateKey};
 use serde::Serialize;
 use tokio::net::UdpSocket;
@@ -35,8 +39,10 @@ use tokio::task::JoinHandle;
 use tokio::{join, task, try_join};
 
 use crate::clients::client::{Client, ConnectionId, Packet};
+use crate::config::Config;
 use crate::errors::Error;
-use crate::prelude::{ClientId, ClientMap, Config, Error::InitializationError, ServerSocket};
+use crate::errors::Error::InitializationError;
+use crate::prelude::{ClientMap, Result};
 use crate::streams::streams::RBiStream;
 
 mod clients;
@@ -109,16 +115,16 @@ async fn main() {
     }
 }
 
-fn init_quic_connection() -> Result<(ServerConfig), Error> {
+fn init_quic_connection() -> Result<(ServerConfig)> {
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".to_string()])?;
-    let key = PrivateKey(cert.serialize_private_key_der());
+    let key = PrivateKeyDer::from_pem_reader(&mut cert.key_pair.serialize_pem().as_bytes())?;
     let server_config =
-        ServerConfig::with_single_cert(vec![Certificate(cert.serialize_der()?)], key)?;
+        ServerConfig::with_single_cert(vec![cert.cert.der().clone()], key)?;
 
     Ok((server_config))
 }
 
-async fn open_endpoint() -> prelude::Result<()> {
+async fn open_endpoint() -> Result<()> {
     let mut quic_config = match init_quic_connection() {
         Ok(quic_config) => {
             info!("- QUIC connection setup !");
@@ -151,8 +157,15 @@ async fn open_endpoint() -> prelude::Result<()> {
     let endpoint = Endpoint::server(quic_config, addr)?;
 
     // Start iterating over incoming connections.
-    while let Some(conn) = endpoint.accept().await {
-        let connection_process = handle_connection(conn);
+    while let Some(incoming) = endpoint.accept().await {
+        let connecting = match incoming.accept() {
+            Ok(conn) => {conn}
+            Err(e) => {
+                error!("Connection failed : {}", e);
+                continue;
+            }
+        };
+        let connection_process = handle_connection(connecting);
         tokio::spawn(async move {
             connection_process.await;
         });
@@ -180,7 +193,7 @@ async fn handle_datagram(packet: Packet) {
         .send_datagram(bytes::Bytes::from("Un Packet unreliable"));
 }
 
-async fn handle_connection(pending_connection: Connecting) -> prelude::Result<()> {
+async fn handle_connection(pending_connection: Connecting) -> Result<()> {
     // wait for connection handshake
     let mut connection = match pending_connection.await {
         Ok(conn) => conn,

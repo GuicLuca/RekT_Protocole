@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use log::{error, info};
 use pretty_logger::{Destination, Theme};
+use quinn::crypto::rustls::QuicClientConfig;
 use quinn::{ClientConfig, Connection, Endpoint};
 
 static PAYLOAD_SIZE: usize = 1024;
@@ -19,12 +20,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Theme::default(),
     )?;
 
-    let crypto = rustls::ClientConfig::builder()
-        .with_safe_defaults()
-        .with_custom_certificate_verifier(SkipServerVerification::new())
+    let crypto = quinn::rustls::ClientConfig::builder()
+        .with_root_certificates(SkipServerVerification::new())
         .with_no_client_auth();
 
-    let client_config = ClientConfig::new(Arc::new(crypto));
+    let client_config = ClientConfig::new(Arc::new(QuicClientConfig::try_from(crypto)?));
 
     let mut iter: u64 = 0;
 
@@ -74,7 +74,7 @@ async fn open_bidirectional_stream(connection: Connection) -> Result<(), Box<dyn
     let (mut send, mut recv) = connection.open_bi().await?;
 
     send.write_all(b"test").await?;
-    send.finish().await?;
+    send.finish()?;
 
     let received = recv.read_to_end(PAYLOAD_SIZE).await?;
     info!("Message received : {}", String::from_utf8(received)?);
@@ -92,7 +92,7 @@ async fn receive_bidirectional_stream(connection: Connection) -> Result<(), Box<
 
         send.write_all(b"response").await?;
         info!("Sent message \"response\" to the server.");
-        send.finish().await?;
+        send.finish()?;
         info!("Bidirectional stream successfully closed.");
     }
 
@@ -103,7 +103,7 @@ async fn open_unidirectional_stream(connection: Connection) -> Result<(), Box<dy
     let mut send = connection.open_uni().await?;
 
     send.write_all(b"test").await?;
-    send.finish().await?;
+    send.finish()?;
 
     Ok(())
 }

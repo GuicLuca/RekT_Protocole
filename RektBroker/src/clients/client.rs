@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use quinn::Connection;
 use rand::random;
 
-use crate::prelude::ClientId;
+use rekt_lib::libs::types::ClientId;
 use crate::streams::streams::{RBiStream, RUnreliableStream};
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]

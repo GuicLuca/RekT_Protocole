@@ -3,9 +3,10 @@ use std::sync::atomic::Ordering;
 use tokio::task::JoinHandle;
 use tokio::{join, task};
 
-use crate::{prelude, PACKET_BUFFER, SERVER_IS_RUNNING, WORKER_CONDVAR};
+use crate::prelude::Result;
+use crate::{PACKET_BUFFER, SERVER_IS_RUNNING, WORKER_CONDVAR};
 
-pub async fn init_job_system() -> prelude::Result<()> {
+pub async fn init_job_system() -> Result<()> {
     let num_cores = num_cpus::get(); // Get the number of physical cores
 
     let mut workers: Vec<JoinHandle<()>> = Vec::with_capacity(num_cores);

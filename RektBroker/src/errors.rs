@@ -13,10 +13,16 @@ pub enum Error {
     InitializationError(String),
 
     #[error(transparent)]
-    CertificateError(#[from] rcgen::RcgenError),
+    CertificateError(#[from] rcgen::Error),
 
     #[error(transparent)]
     RustlsError(#[from] rustls::Error),
+    
+    #[error(transparent)]
+    QuinnTlsPmeError(#[from] quinn::rustls::pki_types::pem::Error),
+    
+    #[error(transparent)]
+    QuinnTlsError(#[from] quinn::rustls::Error),
 
     #[error(transparent)]
     Utf8Error(#[from] FromUtf8Error),
