@@ -10,7 +10,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 /*=== Server types ===*/
 pub type ServerSocket = Arc<tokio::net::UdpSocket>;
-pub type ClientMap = Arc<DashMap<ConnectionId, Client>>;
+pub type ClientMap = Arc<DashMap<ConnectionId, Arc<Client>>>;
 // pub type ClientsHashMap<T> = Arc<RwLock<HashMap<ClientId, T>>>;
 // pub type TopicsHashMap<T> = Arc<RwLock<HashMap<TopicId, T>>>;
 // pub type PingsHashMap = Arc<Mutex<HashMap<PingId, u128>>>;

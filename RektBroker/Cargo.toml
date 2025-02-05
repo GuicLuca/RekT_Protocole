@@ -22,4 +22,5 @@ rand = "0.9.0" # random nuber generation
 bytes = "1.5.0"# byte manipulation
 num_cpus = "1.16.0" # Get CPU cores information
 crossbeam-queue = "0.3.8" # concurent queues
-parking_lot = "0.12.1" # concurent parking lot
+parking_lot = "0.12.1"
+tracing = "0.1.41" # concurent parking lot

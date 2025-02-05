@@ -40,8 +40,8 @@ async fn js_worker() {
         let packet = match PACKET_BUFFER.pop() {
             Some(packet) => packet,
             None => {
-                // If no packet : lock the thread until there is some packet to compute
-                let &(ref lock, ref cvar) = &*WORKER_CONDVAR.clone();
+                // If no packet : lock the thread until there is some packet to compute. Sort of a sleep mode
+                let (ref lock, ref cvar) = &*WORKER_CONDVAR.clone();
                 let mut waiting = lock.lock();
                 if PACKET_BUFFER.is_empty() {
                     // buffer is empty : wait on this line until the condvar is notified

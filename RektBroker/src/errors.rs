@@ -1,7 +1,6 @@
 use std::net::AddrParseError;
 use std::string::FromUtf8Error;
-
-use quinn::{ConnectionError, ReadToEndError, SendDatagramError, WriteError};
+use crate::clients::client::ConnectionId;
 
 #[allow(dead_code)] // remove this line in production
 #[derive(thiserror::Error, Debug)]
@@ -10,38 +9,51 @@ pub enum Error {
     Generic(String),
 
     #[error("[InitializationError] - {0}")]
-    InitializationError(String),
+    Initialization(String),
 
     #[error(transparent)]
-    CertificateError(#[from] rcgen::Error),
+    Certificate(#[from] rcgen::Error),
 
     #[error(transparent)]
-    RustlsError(#[from] rustls::Error),
+    RusTLS(#[from] rustls::Error),
     
     #[error(transparent)]
-    QuinnTlsPmeError(#[from] quinn::rustls::pki_types::pem::Error),
+    QuinnTlsPme(#[from] quinn::rustls::pki_types::pem::Error),
     
     #[error(transparent)]
-    QuinnTlsError(#[from] quinn::rustls::Error),
+    QuinnTls(#[from] quinn::rustls::Error),
 
     #[error(transparent)]
-    Utf8Error(#[from] FromUtf8Error),
+    FromUtf8(#[from] FromUtf8Error),
 
     #[error(transparent)]
-    ReadToEndError(#[from] ReadToEndError),
+    ReadToEnd(#[from] quinn::ReadToEndError),
+    
+    #[error(transparent)]
+    QuinnRead(#[from] quinn::ReadError),
 
     #[error(transparent)]
-    WriteError(#[from] WriteError),
+    WriteOnStream(#[from] quinn::WriteError),
 
     #[error(transparent)]
-    ConnectionError(#[from] ConnectionError),
+    QuinnConnection(#[from] quinn::ConnectionError),
 
     #[error(transparent)]
-    AddrParseError(#[from] AddrParseError),
+    AddrParse(#[from] AddrParseError),
 
     #[error(transparent)]
-    SendDatagramError(#[from] SendDatagramError),
+    SendDatagram(#[from] quinn::SendDatagramError),
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
+    
+    #[error("[Missing Client] - Client of connection {0} not found in global client map.")]
+    MissingClient(ConnectionId),
+}
+
+// Custom conversion from &ConnectionError to ConnectionError
+impl From<&quinn::ConnectionError> for Error {
+    fn from(err: &quinn::ConnectionError) -> Error {
+        Error::QuinnConnection(err.clone())
+    }
 }
