@@ -1,4 +1,4 @@
-/* RektProtocol common lib - Lucas Guichard <lucasguichard127@gmail.com> - 2023 */
+/* RektProtocol common lib - Lucas Guichard <lucasguichard127@gmail.com> - 2025 */
 
 #pragma once
 
@@ -11,6 +11,14 @@
 #include <ostream>
 #include <new>
 
+
+///  * ConnectionStatus is the enum used to statute the connection of a client.  * Depending on the status, the client can do different actions or the server will do different actions.
+enum class ConnectionStatus : uint8_t {
+    Connecting,
+    Connected,
+    Spurious,
+    Unknown,
+};
 
 ///  * DatagramType are used to translate request type  * to the corresponding hexadecimal code.
 enum class DatagramType : uint8_t {
@@ -303,6 +311,10 @@ struct DtgShutdown {
 
 extern "C" {
 
+ConnectionStatus ConnectionStatusFromCode(uint8_t code);
+
+uint8_t ConnectionStatusToCode(ConnectionStatus enum_val);
+
 DatagramType DatagramTypeFromCode(uint8_t code);
 
 uint8_t DatagramTypeToCode(DatagramType enum_val);
@@ -402,6 +414,8 @@ uint16_t GetU16AtPosition(ByteSlice buffer, size_t position);
 uint32_t GetU32AtPosition(ByteSlice buffer, size_t position);
 
 uint64_t GetU64AtPosition(ByteSlice buffer, size_t position);
+
+bool IsDatagramSized(DatagramType enum_val);
 
 ObjectRequestAction ObjectRequestActionFromCode(uint8_t code);
 

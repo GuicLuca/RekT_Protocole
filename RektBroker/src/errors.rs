@@ -31,6 +31,9 @@ pub enum Error {
     
     #[error(transparent)]
     QuinnRead(#[from] quinn::ReadError),
+    
+    #[error(transparent)]
+    QuinnReadExact(#[from] quinn::ReadExactError),
 
     #[error(transparent)]
     WriteOnStream(#[from] quinn::WriteError),
@@ -47,8 +50,16 @@ pub enum Error {
     #[error(transparent)]
     IO(#[from] std::io::Error),
     
+    // RektErrors
+    
     #[error("[Missing Client] - Client of connection {0} not found in global client map.")]
     MissingClient(ConnectionId),
+    
+    #[error("[Client Error] - {0}")]
+    ClientError(String),
+    
+    #[error("[Invalid datagram type] - The datagram type {0} is invalid.")]
+    InvalidDatagramType(u8),
 }
 
 // Custom conversion from &ConnectionError to ConnectionError

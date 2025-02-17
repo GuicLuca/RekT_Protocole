@@ -138,6 +138,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
         let object_id = get_u64_at_pos(buffer, 2)?;
         let mut final_object_id = 0;
 
+        // TODO: if the flag seems to be wrong, replace the buffer[1] by buffer[0]
         if u8_to_vec_be(buffer[1])[7] == 1 {
             final_object_id = get_u64_at_pos(buffer, 10)?;
         }

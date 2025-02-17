@@ -11,6 +11,6 @@ pub type TopicId = u64;
 /// This is the type used to represent a PingID.
 pub type PingId = u8;
 /// This is the type used to represent an ObjectId.
-pub type ObjectId = u64; // 0..2 for type identifier (User generated, broker, temporary)  2..64 identifier
+pub type ObjectId = u64; // 0..1 for type identifier (broker generated or temporary)  1..64 identifier
 /// This is the type used to represent a ClientId.
 pub type ClientId = u64;

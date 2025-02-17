@@ -1,6 +1,14 @@
 #![allow(unused)]
 
 use std::ffi::c_char;
+use crate::datagrams::connect_requests::{DtgConnect, DtgConnectAck, DtgConnectNack};
+use crate::datagrams::data_request::DtgData;
+use crate::datagrams::heartbeat_requests::{DtgHeartbeat, DtgHeartbeatRequest};
+use crate::datagrams::latency_requests::{DtgPing, DtgPong};
+use crate::datagrams::miscellaneous_requests::{DtgServerStatus, DtgServerStatusACK};
+use crate::datagrams::object_requests::{DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK};
+use crate::datagrams::shutdown_request::DtgShutdown;
+use crate::datagrams::topic_request::{DtgTopicRequest, DtgTopicRequestAck, DtgTopicRequestNack};
 
 /**
  * DatagramType are used to translate request type
@@ -125,6 +133,58 @@ impl From<DatagramType> for u8 {
             DatagramType::ObjectRequestNack => 0x18,
             DatagramType::Data => 0x42,
             DatagramType::Unknown => 0xAA,
+        }
+    }
+}
+
+impl DatagramType {
+    pub fn is_sized_datagram(&self) -> bool
+    {
+        match self {
+            DatagramType::Connect => {false}
+            DatagramType::ConnectAck => {false}
+            DatagramType::ConnectNack => {true}
+            DatagramType::Shutdown => {false}
+            DatagramType::OpenStream => {true}
+            DatagramType::ServerStatus => {false}
+            DatagramType::ServerStatusAck => {false}
+            DatagramType::Heartbeat => {false}
+            DatagramType::HeartbeatRequest => {false}
+            DatagramType::Ping => {false}
+            DatagramType::Pong => {false}
+            DatagramType::TopicRequest => {false}
+            DatagramType::TopicRequestAck => {false}
+            DatagramType::TopicRequestNack => {true}
+            DatagramType::ObjectRequest => {true}
+            DatagramType::ObjectRequestAck => {false}
+            DatagramType::ObjectRequestNack => {true}
+            DatagramType::Data => {true}
+            DatagramType::Unknown => {false}
+        }
+    }
+    
+    pub fn get_default_byte_size(&self) -> usize
+    {
+        match self {
+            DatagramType::Connect => {DtgConnect::get_default_byte_size()},
+            DatagramType::ConnectAck => {DtgConnectAck::get_default_byte_size()}
+            DatagramType::ConnectNack => {DtgConnectNack::get_default_byte_size()}
+            DatagramType::Shutdown => {DtgShutdown::get_default_byte_size()}
+            DatagramType::OpenStream => {0} // not implemented yet
+            DatagramType::ServerStatus => {DtgServerStatus::get_default_byte_size()}
+            DatagramType::ServerStatusAck => {DtgServerStatusACK::get_default_byte_size()}
+            DatagramType::Heartbeat => {DtgHeartbeat::get_default_byte_size()}
+            DatagramType::HeartbeatRequest => {DtgHeartbeatRequest::get_default_byte_size()}
+            DatagramType::Ping => {DtgPing::get_default_byte_size()}
+            DatagramType::Pong => {DtgPong::get_default_byte_size()}
+            DatagramType::TopicRequest => {DtgTopicRequest::get_default_byte_size()}
+            DatagramType::TopicRequestAck => {DtgTopicRequestAck::get_default_byte_size()}
+            DatagramType::TopicRequestNack => {DtgTopicRequestNack::get_default_byte_size()}
+            DatagramType::ObjectRequest => {DtgObjectRequest::get_default_byte_size()}
+            DatagramType::ObjectRequestAck => {DtgObjectRequestACK::get_default_byte_size()}
+            DatagramType::ObjectRequestNack => {DtgObjectRequestNACK::get_default_byte_size()}
+            DatagramType::Data => {DtgData::get_default_byte_size()}
+            DatagramType::Unknown => {0}
         }
     }
 }

@@ -8,7 +8,7 @@ language = "C++"
 
 ############## Options for Wrapping the Contents of the Header #################
 
-header = "/* RektProtocol common lib - Lucas Guichard <lucasguichard127@gmail.com> - 2023 */"
+header = "/* RektProtocol common lib - Lucas Guichard <lucasguichard127@gmail.com> - 2025 */"
 # trailer = "/* Text to put at the end of the generated file */"
 # include_guard = "my_bindings_h"
 pragma_once = true
@@ -32,7 +32,6 @@ line_length = 100
 tab_width = 4
 documentation = true
 documentation_style = "auto"
-documentation_length = "full"
 line_endings = "LF" # also "CR", "CRLF", "Native"
 
 
@@ -146,8 +145,16 @@ include = [
     "src/enums/object_request_action.rs",
     "src/enums/topic_actions.rs",
     "src/enums/topic_response.rs",
+    "src/enums/connection_status.rs",
     "src/libs/utils.rs",
     "src/datagrams/connect_requests.rs",
+    "src/datagrams/data_request.rs",
+    "src/datagrams/heartbeat_requests.rs",
+    "src/datagrams/object_requests.rs",
+    "src/datagrams/topic_request.rs",
+    "src/datagrams/latency_requests.rs",
+    "src/datagrams/miscellaneous_requests.rs",
+    "src/datagrams/shutdown_request.rs",
     "src/rekt_commom_ffi.rs",
 ]
 exclude = []
@@ -158,6 +165,6 @@ extra_bindings = []
 
 [parse.expand]
 crates = []
-all_features = false
+all_features = true
 default_features = true
 features = []

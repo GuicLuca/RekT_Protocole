@@ -15,6 +15,7 @@ use crate::datagrams::object_requests::{
     DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK,
 };
 use crate::datagrams::shutdown_request::DtgShutdown;
+use crate::enums::connection_status::ConnectionStatus;
 use crate::enums::datagram_type::{display_datagram_type, DatagramType};
 use crate::enums::end_connection_reason::EndConnexionReason;
 use crate::enums::object_request_action::ObjectRequestAction;
@@ -23,7 +24,7 @@ use crate::enums::topic_response::TopicResponse;
 use crate::libs::types::{ClientId, Flag, ObjectId, PingId, Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u32_at_pos, get_u64_at_pos};
 
-// Command to generate bindings : cbindgen --config cbindgen.toml --crate rekt-common --output bindings.h
+// Command to generate bindings : cbindgen --config cbindgen.toml --crate rekt_lib  --output bindings.h
 // ------------------------------------------------------------
 // FFI types
 // ------------------------------------------------------------
@@ -221,6 +222,11 @@ pub extern "C" fn DatagramTypeToCode(enum_val: DatagramType) -> u8 {
     u8::from(enum_val)
 }
 
+#[no_mangle]
+pub extern "C" fn IsDatagramSized(enum_val: DatagramType) -> bool {
+    enum_val.is_sized_datagram()
+}
+
 // ------------------------------------------------------------
 // Enums - EndConnexionReason
 // ------------------------------------------------------------
@@ -231,6 +237,19 @@ pub extern "C" fn EndConnexionReasonFromCode(code: u8) -> EndConnexionReason {
 
 #[no_mangle]
 pub extern "C" fn EndConnexionReasonToCode(enum_val: EndConnexionReason) -> u8 {
+    u8::from(enum_val)
+}
+
+// ------------------------------------------------------------
+// Enums - ConnectionStatus
+// ------------------------------------------------------------
+#[no_mangle]
+pub extern "C" fn ConnectionStatusFromCode(code: u8) -> ConnectionStatus {
+    ConnectionStatus::from(code)
+}
+
+#[no_mangle]
+pub extern "C" fn ConnectionStatusToCode(enum_val: ConnectionStatus) -> u8 {
     u8::from(enum_val)
 }
 

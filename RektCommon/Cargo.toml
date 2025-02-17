@@ -1,6 +1,6 @@
 [package]
 name = "rekt_lib"
-version = "0.1.5"
+version = "0.1.9"
 edition = "2021"
 include = [
     "src/**/*",
@@ -9,7 +9,7 @@ include = [
     "LICENSE"
 ]
 homepage = "https://github.com/GuicLuca/RekT_Protocole/wiki"
-description = "Common lib to use the rekt-protocol. See the crate homepage to check the protocol RFC."
+description = "Common lib to use the RekT protocol. See the crate homepage to check the protocol RFC."
 keywords = [
     "RekT-protocol",
     "pub-sub",

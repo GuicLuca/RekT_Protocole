@@ -42,6 +42,7 @@ use std::sync::Arc;
 use std::thread::sleep;
 use tokio::io::AsyncWriteExt;
 use tokio::net::UdpSocket;
+use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::Sleep;
 use tokio::{join, task, try_join};
@@ -142,7 +143,7 @@ fn init_quic_connection() -> Result<(ServerConfig)> {
 async fn open_endpoint() -> Result<()> {
     let mut quic_config = match init_quic_connection() {
         Ok(quic_config) => {
-            info!("- QUIC connection setup !");
+            info!("- QUIC connection setup successfully.");
             quic_config
         }
         Err(err) => {
@@ -212,7 +213,7 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
         info!("New connection established with {}", connection_id);
 
         // Store the client to the static hashmap.
-        let client = Arc::from(Client::new(connection_id, connection));
+        let client = Arc::from(RwLock::from(Client::new(connection_id, connection)));
         CLIENT_MAP.entry(connection_id).insert(client);
         info!("-> Client {} added to the client map.", connection_id);
 
@@ -221,7 +222,7 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
                 "Waiting for a new bidirectional stream from {}",
                 connection_id
             );
-            let client = match CLIENT_MAP.get_mut(&connection_id) {
+            let mut client = match CLIENT_MAP.get_mut(&connection_id) {
                 None => {
                     // The client has been removed from the hashmap.
                     return Err(Error::MissingClient(connection_id));
@@ -229,31 +230,35 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
                 Some(entry) => entry.clone(),
             };
 
-            let bi_stream = client.connection.accept_bi().await;
+            {
+                // Scope to release the lock on the client
+                let mut client_mut = client.write().await;
 
-            let stream: RBiStream = match bi_stream {
-                Ok((send, recv)) => {
-                    info!("New bidirectional stream received from {}", connection_id);
-                    RBiStream {
-                        sender: send,
-                        receiver: recv,
+                let bi_stream = client_mut.connection.accept_bi().await;
+
+                match bi_stream {
+                    Ok((send, recv)) => {
+                        info!("New bidirectional stream received from {}", connection_id);
+                        client_mut.sender = Some(Arc::from(RwLock::from(send)));
+                        client_mut.receiver = Some(Arc::from(RwLock::from(recv)));
                     }
-                }
-                Err(e) => {
-                    info!("Connection {} closed for reason: {}", connection_id, e);
+                    Err(e) => {
+                        info!("Connection {} closed for reason: {}", connection_id, e);
 
-                    // Remove the client from the hashmap
-                    CLIENT_MAP.remove(&connection_id);
+                        // Remove the client from the hashmap
+                        CLIENT_MAP.remove(&connection_id);
 
-                    info!("<- Client {} removed from the client map.", connection_id);
+                        info!("<- Client {} removed from the client map.", connection_id);
 
-                    return Ok(());
-                }
-            };
+                        return Ok(());
+                    }
+                };
+            } // End of the lock on the client
 
             tokio::spawn(async move {
-                match client.handle_bi_stream(stream).await {
-                    Err(Error::QuinnRead { .. }) => {
+                // TODO : this read lock may be as long as the client is connected so it may be a problem if need to be modified
+                match client.read().await.handle_bi_stream().await {
+                    Err(Error::QuinnRead { .. }) | Err(Error::QuinnReadExact { .. }) => {
                         info!("Bidirectional stream closed with client {}", connection_id);
                     }
                     Err(e) => {
@@ -279,12 +284,25 @@ async fn handle_datagram(packet: Packet) {
     // TODO : Handle packet according the source and the datagram
 
     // 1 - fetch a ref ot the client :
-    let client = match CLIENT_MAP.get_mut(&packet.source) {
+    let client = match CLIENT_MAP.get(&packet.source) {
         None => {
+            error!("Can't handle datagram because client {} is not in the client map.", packet.source);
             return;
         }
-        Some(entry) => entry,
+        Some(entry) => entry.value().clone(),
     };
 
     // 2 - build the datagram struct + respond to it
+    
+    // TODO: handle datagrams here
+    
+    
+    // Get the client corresponding sender
+    let sender = match &client.read().await.sender {
+        Some(sender) => sender.clone(),
+        None => {
+            error!("Client {} has no sender stream, so handle_datagram can't respond to the client.", packet.source);
+            return;
+        }
+    };
 }
