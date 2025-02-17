@@ -7,9 +7,11 @@ use crate::errors::Error;
 use crate::errors::Error::InvalidDatagramType;
 use crate::prelude::Result;
 use crate::streams::streams::{RBiStream, RUnreliableStream};
-use crate::PACKET_BUFFER;
+use crate::{CLIENT_MAP, PACKET_BUFFER};
 use quinn::{Connection, RecvStream, SendStream};
 use rand::random;
+use rekt_lib::datagrams::heartbeat_requests::DtgHeartbeat;
+use rekt_lib::datagrams::latency_requests::{DtgPing, DtgPong};
 use rekt_lib::enums::connection_status::ConnectionStatus;
 use rekt_lib::enums::datagram_type::DatagramType::{
     Connect, Data, Heartbeat, HeartbeatRequest, ObjectRequest, OpenStream, Ping, Pong,
@@ -19,6 +21,7 @@ use rekt_lib::enums::datagram_type::{display_datagram_type, DatagramType};
 use rekt_lib::libs::types::ClientId;
 use rekt_lib::libs::utils::get_u16_at_pos;
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct ConnectionId {
@@ -52,6 +55,7 @@ pub struct Client {
     pub receiver: Option<Arc<RwLock<RecvStream>>>,
     pub sender: Option<Arc<RwLock<SendStream>>>,
     pub status: ConnectionStatus,
+    pub life_signe: Arc<RwLock<Instant>>
 }
 
 impl Client {
@@ -63,6 +67,7 @@ impl Client {
             status: ConnectionStatus::Connecting, // The client is connecting until he sends a CONNECT request
             receiver: None,
             sender: None,
+            life_signe: Arc::new(RwLock::new(Instant::now()))
         }
     }
     /**
@@ -77,6 +82,15 @@ impl Client {
             .expect("Failed to calculate duration since UNIX_EPOCH")
             .as_nanos() as ClientId)
             ^ random::<ClientId>()
+    }
+    
+    /**
+     * This method update the life signe of the client.
+     * The life signe is the last time the client sent a datagram to the broker.
+     */
+    async fn update_life_signe(&self) {
+        let mut life_signe = self.life_signe.write().await;
+        *life_signe = Instant::now();
     }
 
     /**
@@ -117,6 +131,11 @@ impl Client {
         }
     }
 
+    /**
+     * This method handle the bidirectional stream of a client.
+     *
+     * @return Result<()>, an empty result if the method succeed.
+     */
     pub async fn handle_bi_stream(&self) -> Result<()> {
         // Handle the bidirectional stream of a client
         let mut client_buf: Vec<u8> = Vec::with_capacity(10 * 1500); // 15Kb = 10 RekT datagrams maximum
@@ -202,8 +221,17 @@ impl Client {
                 // For now, we continue the loop but a strong implementation MAY track unauthorized client actions for security reasons
                 continue;
             }
+
+            // Direct respond to pong and heartbeat requests
+            if [Ping, Pong, HeartbeatRequest, Heartbeat].contains(&dtg_type) {
+                let fut = Client::direct_respond(self.connection_id, datagram_bytes.clone());
+                tokio::spawn(async move { fut.await; });
+                continue 'handling;
+            }
             
-            // TODO: direct respond to pong and heartbeat requests
+            // Update the life signe of the client because he sent a datagram (whatever the type)
+            
+            self.update_life_signe().await;
 
             // From here, every command received MUST be handled by the broker
             let mut packet_queuing_retry = 0;
@@ -235,10 +263,84 @@ impl Client {
             }
         }
     }
+
+    pub async fn direct_respond(connection_id: ConnectionId, datagram: Vec<u8>) -> Result<()> {
+        // Get the client from the global client map
+        let client_locked = match CLIENT_MAP.get(&connection_id) {
+            None => {
+                // The client has been removed from the hashmap.
+                return Err(Error::MissingClient(connection_id));
+            }
+            Some(entry) => entry.clone(),
+        };
+        
+        // Directly respond to a client
+        let arc_sender = {
+            // internal scope to release the lock on the client after the sender is cloned
+            let client = client_locked.read().await;
+            
+            match &client.sender {
+                Some(sender) => sender.clone(),
+                None => {
+                    error!("Client {} has no sender stream!", client.connection_id);
+                    return Err(Error::ClientError(format!(
+                        "Client {} has no sender stream!",
+                        client.connection_id
+                    )));
+                }
+            }
+        };
+
+        // check if the datagram type:
+        let dtg_type = DatagramType::from(datagram[0]);
+        match dtg_type {
+            Heartbeat | HeartbeatRequest => {
+                let client = client_locked.read().await;
+                // update the life signe of the client whatever the datagram type
+                client.update_life_signe().await;
+                
+                if dtg_type == HeartbeatRequest {
+                    // if the datagram type is a heartbeat request, respond with a heartbeat
+                    let heartbeat_datagram = DtgHeartbeat::new();
+                    let mut sender = arc_sender.write().await;
+                    sender.write_all(&heartbeat_datagram.as_bytes()).await?;
+                } else {
+                    // nothing to do here, the client is still alive
+                    trace!("Heartbeat datagram received from client {}", connection_id);
+                }
+            }
+            Pong | Ping => {
+                if dtg_type == Ping {
+                    let ping_datagram = DtgPing::try_from(&datagram[..])?;
+                    // if the datagram type is a ping, respond with a pong
+                    let pong_datagram = DtgPong::new(ping_datagram.ping_id);
+                    {
+                        let mut sender = arc_sender.write().await;
+                        sender.write_all(&pong_datagram.as_bytes()).await?;
+                    }
+                } else {
+                    // handle pong datagram locally
+                    info!("Pong datagram received from client {}", connection_id);
+                    // TODO: implement pong handling
+                }
+            }
+            _ => {
+                // if this case is reached, the datagram type is not a direct response type
+                // so there is no need to respond to the client
+                warn!(
+                    "Methode direct_respond called with a non direct response datagram type. Got \"{}\"",
+                    display_datagram_type(dtg_type)
+                );
+                return Ok(());
+            }
+        };
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
 pub struct Packet {
     pub source: ConnectionId,
-    pub datagram: Vec<u8>
+    pub datagram: Vec<u8>,
 }

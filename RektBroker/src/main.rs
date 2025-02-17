@@ -31,6 +31,7 @@ use quinn::rustls::pki_types::pem::PemObject;
 use quinn::rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use quinn::{Connecting, Connection, ConnectionError, Endpoint, ServerConfig};
 use rcgen::CertifiedKey;
+use rekt_lib::enums::datagram_type::DatagramType;
 use rustls::{Certificate, PrivateKey};
 use serde::Serialize;
 use std::io::Bytes;
@@ -257,6 +258,7 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
 
             tokio::spawn(async move {
                 // TODO : this read lock may be as long as the client is connected so it may be a problem if need to be modified
+                // TODO : The current solution is to consider client as constant and encapsulates inner fields in RwLock
                 match client.read().await.handle_bi_stream().await {
                     Err(Error::QuinnRead { .. }) | Err(Error::QuinnReadExact { .. }) => {
                         info!("Bidirectional stream closed with client {}", connection_id);
@@ -281,28 +283,90 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
  * @param packet : Packet : the packet received from the client.
  */
 async fn handle_datagram(packet: Packet) {
-    // TODO : Handle packet according the source and the datagram
-
     // 1 - fetch a ref ot the client :
     let client = match CLIENT_MAP.get(&packet.source) {
         None => {
-            error!("Can't handle datagram because client {} is not in the client map.", packet.source);
+            error!(
+                "Can't handle datagram because client {} is not in the client map.",
+                packet.source
+            );
             return;
         }
         Some(entry) => entry.value().clone(),
     };
 
-    // 2 - build the datagram struct + respond to it
-    
-    // TODO: handle datagrams here
-    
-    
-    // Get the client corresponding sender
+    // Get the client corresponding sender BUT do not lock it yet
     let sender = match &client.read().await.sender {
         Some(sender) => sender.clone(),
         None => {
-            error!("Client {} has no sender stream, so handle_datagram can't respond to the client.", packet.source);
+            error!(
+                "Client {} has no sender stream, so handle_datagram can't respond to the client.",
+                packet.source
+            );
             return;
         }
     };
+
+    // 2 - Handle the datagram according to its type
+    match DatagramType::from(packet.datagram[0]) {
+        // TODO : Implement the following cases
+        DatagramType::ServerStatus => {}
+        DatagramType::TopicRequest => {}
+        DatagramType::ObjectRequest => {}
+        DatagramType::Data => {}
+
+        // Following cases are authorized to be sent in the job system but not implemented
+        DatagramType::OpenStream => {
+            // There is no need to implement stream for the prototype we want to test
+            unimplemented!("OpenStream datagram type is not implemented.");
+        }
+
+        // Following cases MUST never be reached (handled before or not authorized)
+        DatagramType::Unknown => {
+            error!(
+                "Handle_datagram received an unknown datagram type : {}",
+                packet.datagram[0]
+            );
+            // return;
+        }
+        DatagramType::Heartbeat
+        | DatagramType::HeartbeatRequest
+        | DatagramType::Ping
+        | DatagramType::Pong => {
+            // those datagram types are not authorized to be sent in the job system and MUST be handled before in the client router (see client.rs::handle_bi_stream::direct_respond)
+            trace!(
+                "Datagram type {} is should not be sent in the job system.",
+                packet.datagram[0]
+            );
+
+            tokio::spawn(async move {
+                Client::direct_respond(packet.source, packet.datagram).await;
+            });
+            // return;
+        }
+        DatagramType::Connect
+        | DatagramType::ConnectAck
+        | DatagramType::ConnectNack
+        | DatagramType::Shutdown => {
+            // those datagram types are not handled in the job system, they are handled in the connection process
+            trace!(
+                "Datagram type {} is should not be sent in the job system.",
+                packet.datagram[0]
+            );
+            // nothing to do here
+            // return;
+        }
+        DatagramType::ServerStatusAck
+        | DatagramType::TopicRequestAck
+        | DatagramType::TopicRequestNack
+        | DatagramType::ObjectRequestAck
+        | DatagramType::ObjectRequestNack => {
+            // those datagram types are not allowed to be sent by the client
+            error!(
+                "Datagram type {} is not authorized to be sent by the client.",
+                packet.datagram[0]
+            );
+            // return;
+        }
+    }
 }

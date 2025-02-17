@@ -68,3 +68,10 @@ impl From<&quinn::ConnectionError> for Error {
         Error::QuinnConnection(err.clone())
     }
 }
+
+// Custom conversion from &str to Error
+impl From<&str> for Error {
+    fn from(err: &str) -> Error {
+        Error::Generic(err.to_string())
+    }
+}
