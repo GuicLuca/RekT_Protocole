@@ -4,6 +4,7 @@ use crate::libs::utils::get_u64_at_pos;
 use std::mem::size_of;
 
 //===== Sent to know the server status
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgServerStatus {
     pub datagram_type: DatagramType,
@@ -40,6 +41,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgServerStatus {
 }
 
 //===== Sent to answer a ServerStatus request
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgServerStatusACK {
     pub datagram_type: DatagramType,

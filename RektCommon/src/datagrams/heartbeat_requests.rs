@@ -1,6 +1,7 @@
 use crate::enums::datagram_type::DatagramType;
 
 //===== Sent to maintain the connexion
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgHeartbeat {
     pub datagram_type: DatagramType,
@@ -38,6 +39,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgHeartbeat {
 
 //===== Sent to request a Heartbeat if a pear do not receive his
 // normal heartbeat.
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgHeartbeatRequest {
     pub datagram_type: DatagramType,

@@ -2,7 +2,7 @@
  * Topics response are all possible responses
  * type to a TOPICS_REQUEST
  */
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(u8)]
 #[no_mangle]
 pub enum TopicResponse {

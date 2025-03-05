@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use std::mem::size_of;
 
 //===== Sent to acknowledge a TOPIC_REQUEST
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgObjectRequest {
     pub datagram_type: DatagramType,
@@ -94,6 +95,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequest {
 }
 
 //===== Sent to acknowledge a OBJECT_REQUEST create
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgObjectRequestACK {
     pub datagram_type: DatagramType,
@@ -153,6 +155,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgObjectRequestACK {
 }
 
 // ===== Sent in case of error for all action (Create update delete)
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgObjectRequestNACK {
     pub datagram_type: DatagramType,

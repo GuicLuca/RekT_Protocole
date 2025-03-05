@@ -5,6 +5,7 @@ use crate::libs::types::{ClientId, Size};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos};
 
 // Sent to the broker to start a connection
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgConnect {
     pub datagram_type: DatagramType,
@@ -41,7 +42,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgConnect {
 }
 
 //===== Sent to acknowledge the connexion with success
-
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgConnectAck {
     pub datagram_type: DatagramType,
@@ -91,6 +92,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgConnectAck {
     }
 }
 
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgConnectNack {
     pub datagram_type: DatagramType,

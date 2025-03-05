@@ -2,6 +2,7 @@ use crate::enums::datagram_type::DatagramType;
 use crate::libs::types::PingId;
 
 //===== Sent to measure the latency between peer and broker
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgPing {
     pub datagram_type: DatagramType,
@@ -44,6 +45,7 @@ impl<'a> TryFrom<&'a [u8]> for DtgPing {
 }
 
 //===== Sent to answer a ping request.
+#[derive(Debug)]
 #[repr(C)]
 pub struct DtgPong {
     pub datagram_type: DatagramType,

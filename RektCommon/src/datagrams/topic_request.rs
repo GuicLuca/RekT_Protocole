@@ -5,6 +5,8 @@ use crate::libs::types::{Size, TopicId};
 use crate::libs::utils::{get_bytes_from_slice, get_u16_at_pos, get_u64_at_pos};
 
 //===== Sent to subscribe/unsubscribe to a topic
+#[derive(Debug)]
+#[repr(C)]
 pub struct DtgTopicRequest {
     pub datagram_type: DatagramType, // 1 byte
     pub flag: TopicAction,           // 1 byte
@@ -52,6 +54,8 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequest {
 }
 
 //===== Sent to acknowledge a TOPIC_REQUEST
+#[derive(Debug)]
+#[repr(C)]
 pub struct DtgTopicRequestAck {
     pub datagram_type: DatagramType,
     pub flag: TopicResponse,
@@ -97,6 +101,9 @@ impl<'a> TryFrom<&'a [u8]> for DtgTopicRequestAck {
     }
 }
 
+//===== Sent to acknowledge a TOPIC_REQUEST with an error
+#[derive(Debug)]
+#[repr(C)]
 pub struct DtgTopicRequestNack {
     pub datagram_type: DatagramType,
     pub size: Size,

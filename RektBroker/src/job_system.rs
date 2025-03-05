@@ -69,26 +69,26 @@ async fn js_worker() {
 
 async fn js_life_signal_checker() {
     'server_life: while SERVER_IS_RUNNING.load(Ordering::Acquire) {
-        info!("Checking life signals for each connected clients...");
+        trace!("[HeartBeat-Checker] Checking life signals for each connected clients...");
         // 1 - loop over all clients
         'iter: for client_info in CLIENT_MAP.iter() {
             // 2 - check if the last ping is older than HEARTBEAT_PERIOD ms
-            trace!("Checking life signal for client {}", client_info.key());
-            let client_read = client_info.read().await;
+            trace!("[HeartBeat-Checker] Checking life signal for client {}", client_info.key());
+            let client_read = client_info.value().read().await;
             let last_life_signe = {
                 client_read.life_signe.read().await.elapsed().as_millis()
             };
 
             if last_life_signe < CONFIG.heart_beat_period as u128 {
                 // 3 - Last ping is close enough, we can continue
-                trace!("Client {} is alive.", client_info.key());
+                trace!("[HeartBeat-Checker] Client {} is alive.", client_info.key());
                 continue 'iter;
             }
             
             if last_life_signe > (CONFIG.heart_beat_period as u128 * 2) {
                 // 4 - Last ping is older than 2 * HEARTBEAT_PERIOD ms, disconnect the client
                 // TODO : Implement the disconnection process and call it here
-                trace!("Client {} is dead.", client_info.key());
+                info!("[HeartBeat-Checker] Client {} is dead.", client_info.key());
                 continue 'iter;
             }
             
@@ -103,7 +103,7 @@ async fn js_life_signal_checker() {
                     let sender = match &client_read.sender {
                         Some(sender) => sender.clone(),
                         None => {
-                            error!("Client {} has no sender stream!", client_info.key());
+                            error!("[HeartBeat-Checker] Client {} has no sender stream!", client_info.key());
                             // Robust implementation MUST disconnect the client here
                             continue 'iter;
                         }
@@ -116,8 +116,6 @@ async fn js_life_signal_checker() {
                     // TODO : Implement the disconnection process and call it here
                 }
             }
-            
-            trace!("End of life signal check for client {}. Resulting status: {:?}.", client_info.key(), *status);
         }
         // sleep for the quarter of the heartbeat period
         tokio::time::sleep(tokio::time::Duration::from_millis((CONFIG.heart_beat_period / 4) as u64)).await;

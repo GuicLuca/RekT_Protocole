@@ -1,4 +1,4 @@
-# This is a template cbindgen.toml file with all of the default values.
+# This is a template cbindgen.toml file with all the default values.
 # Some values are commented out because their absence is the real default.
 #
 # See https://github.com/mozilla/cbindgen/blob/master/docs.md#cbindgentoml

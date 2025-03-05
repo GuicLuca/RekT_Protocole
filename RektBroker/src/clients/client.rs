@@ -7,9 +7,10 @@ use crate::errors::Error;
 use crate::errors::Error::InvalidDatagramType;
 use crate::prelude::Result;
 use crate::streams::streams::{RBiStream, RUnreliableStream};
-use crate::{CLIENT_MAP, PACKET_BUFFER};
+use crate::{CLIENT_MAP, CONFIG, PACKET_BUFFER};
 use quinn::{Connection, RecvStream, SendStream};
 use rand::random;
+use rekt_lib::datagrams::connect_requests::DtgConnectAck;
 use rekt_lib::datagrams::heartbeat_requests::DtgHeartbeat;
 use rekt_lib::datagrams::latency_requests::{DtgPing, DtgPong};
 use rekt_lib::enums::connection_status::ConnectionStatus;
@@ -22,6 +23,12 @@ use rekt_lib::libs::types::ClientId;
 use rekt_lib::libs::utils::get_u16_at_pos;
 use tokio::sync::RwLock;
 use tokio::time::Instant;
+
+#[derive(Debug)]
+pub struct Packet {
+    pub source: ConnectionId,
+    pub datagram: Vec<u8>,
+}
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct ConnectionId {
@@ -139,6 +146,19 @@ impl Client {
     pub async fn handle_bi_stream(&self) -> Result<()> {
         // Handle the bidirectional stream of a client
         let mut client_buf: Vec<u8> = Vec::with_capacity(10 * 1500); // 15Kb = 10 RekT datagrams maximum
+        
+        // Send something random to the client to start the communication
+        // {
+        //     match &self.sender {
+        //         None => {
+        //             error!("Client {} has no sender stream in handle_bi_stream!", self.connection_id);
+        //         }
+        //         Some(s) => {
+        //             let mut sender = s.write().await;
+        //             sender.write_all(b"hello").await?;
+        //         }
+        //     }
+        // }
 
         'handling: loop {
             let mut network_buf: [u8; 1524] = [0; 1524]; // 1500 bytes + 24 bytes for the QUIC header
@@ -223,7 +243,7 @@ impl Client {
             }
 
             // Direct respond to pong and heartbeat requests
-            if [Ping, Pong, HeartbeatRequest, Heartbeat].contains(&dtg_type) {
+            if [Ping, Pong, HeartbeatRequest, Heartbeat, Connect].contains(&dtg_type) {
                 let fut = Client::direct_respond(self.connection_id, datagram_bytes.clone());
                 tokio::spawn(async move {
                     fut.await;
@@ -323,8 +343,21 @@ impl Client {
                 } else {
                     // handle pong datagram locally
                     info!("Pong datagram received from client {}", connection_id);
-                    // TODO: implement pong handling
+                    // TODO: implement pong handling here
+                    // latency measurement is not necessary for the main experiment so it is not implemented
                 }
+            }
+            Connect => {
+                // if the datagram type is a connect, answer with the heartbeat period + update his status
+                let connect_ack_dtg = {
+                    let client_read = client.read().await;
+                    *client_read.status.write().await = ConnectionStatus::Connected;
+                    DtgConnectAck::new(client_read.id, CONFIG.heart_beat_period)
+                };
+
+                let mut sender = arc_sender.write().await;
+                sender.write_all(&connect_ack_dtg.as_bytes()).await?;
+                info!("Client {} has now the status \"Connected\".", connection_id);
             }
             _ => {
                 // if this case is reached, the datagram type is not a direct response type
@@ -339,10 +372,4 @@ impl Client {
 
         Ok(())
     }
-}
-
-#[derive(Debug)]
-pub struct Packet {
-    pub source: ConnectionId,
-    pub datagram: Vec<u8>,
 }

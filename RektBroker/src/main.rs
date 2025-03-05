@@ -219,10 +219,6 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
         info!("-> Client {} added to the client map.", connection_id);
 
         loop {
-            info!(
-                "Waiting for a new bidirectional stream from {}",
-                connection_id
-            );
             let client = match CLIENT_MAP.get(&connection_id) {
                 None => {
                     // The client has been removed from the hashmap.
@@ -271,7 +267,7 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
                         info!("Bidirectional stream closed with client {}", connection_id);
                     }
                     Err(e) => {
-                        error!("Error while handling bidirectional stream: {}", e);
+                        error!("Error while handling bidirectional stream: {:?}", e);
                     }
                     _ => {}
                 }

@@ -13,3 +13,5 @@ pretty_env_logger = "0.5.0"
 quinn = "0.11.6"
 tokio = {version ="1.33.0", features = ["full"]} # async
 rustls = { version = "*", features = ["quic", "dangerous_configuration"] }
+rekt_lib = "0.1.9"
+lazy_static = "1.5.0"
