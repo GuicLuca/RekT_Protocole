@@ -1,23 +1,34 @@
+use rekt_lib::datagrams::heartbeat_requests::DtgHeartbeatRequest;
+use rekt_lib::enums::connection_status::ConnectionStatus;
+use rekt_lib::enums::connection_status::ConnectionStatus::*;
+use rekt_lib::enums::datagram_type::DatagramType::HeartbeatRequest;
 use std::sync::atomic::Ordering;
-
 use tokio::task::JoinHandle;
 use tokio::{join, task};
 
+use crate::config::Config;
+use crate::errors::Error;
 use crate::prelude::Result;
-use crate::{PACKET_BUFFER, SERVER_IS_RUNNING, WORKER_CONDVAR};
+use crate::{CLIENT_MAP, CONFIG, PACKET_BUFFER, SERVER_IS_RUNNING, WORKER_CONDVAR};
 
 pub async fn init_job_system() -> Result<()> {
     let num_cores = num_cpus::get(); // Get the number of physical cores
 
     let mut workers: Vec<JoinHandle<()>> = Vec::with_capacity(num_cores);
 
-    for _ in 0..num_cores {
+    // Create a worker for each core except one for the main thread and one for the life signal checker
+    for _ in 0..num_cores - 2 {
         workers.push(task::spawn_blocking(move || {
             tokio::runtime::Runtime::new()
                 .unwrap()
                 .block_on(js_worker());
         }));
     }
+    workers.push(task::spawn_blocking(move || {
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(js_life_signal_checker());
+    }));
 
     join!(async {
         for handle in workers {
@@ -53,5 +64,62 @@ async fn js_worker() {
 
         // compute the packet
         crate::handle_datagram(packet).await;
+    }
+}
+
+async fn js_life_signal_checker() {
+    'server_life: while SERVER_IS_RUNNING.load(Ordering::Acquire) {
+        info!("Checking life signals for each connected clients...");
+        // 1 - loop over all clients
+        'iter: for client_info in CLIENT_MAP.iter() {
+            // 2 - check if the last ping is older than HEARTBEAT_PERIOD ms
+            trace!("Checking life signal for client {}", client_info.key());
+            let client_read = client_info.read().await;
+            let last_life_signe = {
+                client_read.life_signe.read().await.elapsed().as_millis()
+            };
+
+            if last_life_signe < CONFIG.heart_beat_period as u128 {
+                // 3 - Last ping is close enough, we can continue
+                trace!("Client {} is alive.", client_info.key());
+                continue 'iter;
+            }
+            
+            if last_life_signe > (CONFIG.heart_beat_period as u128 * 2) {
+                // 4 - Last ping is older than 2 * HEARTBEAT_PERIOD ms, disconnect the client
+                // TODO : Implement the disconnection process and call it here
+                trace!("Client {} is dead.", client_info.key());
+                continue 'iter;
+            }
+            
+            
+            // 5 - Last ping is older than HEARTBEAT_PERIOD ms, send a ping
+            let mut status = client_read.status.write().await;
+            match *status {
+                Connecting | Connected | Unknown => {
+                    // Set the connection as spurious
+                    *status = Spurious;
+                    // Send a heartbeat_request
+                    let sender = match &client_read.sender {
+                        Some(sender) => sender.clone(),
+                        None => {
+                            error!("Client {} has no sender stream!", client_info.key());
+                            // Robust implementation MUST disconnect the client here
+                            continue 'iter;
+                        }
+                    };
+            
+                    let dtg = DtgHeartbeatRequest::new();
+                    sender.write().await.write_all(&dtg.as_bytes()).await;
+                }
+                Spurious => {
+                    // TODO : Implement the disconnection process and call it here
+                }
+            }
+            
+            trace!("End of life signal check for client {}. Resulting status: {:?}.", client_info.key(), *status);
+        }
+        // sleep for the quarter of the heartbeat period
+        tokio::time::sleep(tokio::time::Duration::from_millis((CONFIG.heart_beat_period / 4) as u64)).await;
     }
 }

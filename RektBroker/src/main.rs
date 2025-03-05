@@ -223,7 +223,7 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
                 "Waiting for a new bidirectional stream from {}",
                 connection_id
             );
-            let mut client = match CLIENT_MAP.get_mut(&connection_id) {
+            let client = match CLIENT_MAP.get(&connection_id) {
                 None => {
                     // The client has been removed from the hashmap.
                     return Err(Error::MissingClient(connection_id));
@@ -231,30 +231,37 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
                 Some(entry) => entry.clone(),
             };
 
-            {
-                // Scope to release the lock on the client
-                let mut client_mut = client.write().await;
+            
+            let client_read = client.read().await;
+            let bi_stream = client_read.connection.accept_bi().await;
 
-                let bi_stream = client_mut.connection.accept_bi().await;
+            match bi_stream {
+                Ok((send, recv)) => {
+                    info!("New bidirectional stream received from {}", connection_id);
+                    // /!\ IMPORTANT : The lock level is converted here to prevent deadlocks by waiting on accept_bi() with a write lock
+                    // register the lock in the queue
+                    let client_mut_fut = client.write(); 
+                    // drop the read lock
+                    drop(client_read);
+                    // wait for the write lock
+                    let mut client_mut = client_mut_fut.await;
+                    client_mut.sender = Some(Arc::from(RwLock::from(send)));
+                    client_mut.receiver = Some(Arc::from(RwLock::from(recv)));
+                    drop(client_mut);
+                }
+                Err(e) => {
+                    info!("Connection {} closed for reason: {}", connection_id, e);
+                    // free the read lock
+                    drop(client_read);
 
-                match bi_stream {
-                    Ok((send, recv)) => {
-                        info!("New bidirectional stream received from {}", connection_id);
-                        client_mut.sender = Some(Arc::from(RwLock::from(send)));
-                        client_mut.receiver = Some(Arc::from(RwLock::from(recv)));
-                    }
-                    Err(e) => {
-                        info!("Connection {} closed for reason: {}", connection_id, e);
+                    // Remove the client from the hashmap
+                    CLIENT_MAP.remove(&connection_id);
 
-                        // Remove the client from the hashmap
-                        CLIENT_MAP.remove(&connection_id);
+                    info!("<- Client {} removed from the client map.", connection_id);
 
-                        info!("<- Client {} removed from the client map.", connection_id);
-
-                        return Ok(());
-                    }
-                };
-            } // End of the lock on the client
+                    return Ok(());
+                }
+            };
 
             tokio::spawn(async move {
                 // TODO : this read lock may be as long as the client is connected so it may be a problem if need to be modified

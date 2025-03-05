@@ -54,8 +54,8 @@ pub struct Client {
     pub connection: Connection,
     pub receiver: Option<Arc<RwLock<RecvStream>>>,
     pub sender: Option<Arc<RwLock<SendStream>>>,
-    pub status: ConnectionStatus,
-    pub life_signe: Arc<RwLock<Instant>>
+    pub status: RwLock<ConnectionStatus>,
+    pub life_signe: Arc<RwLock<Instant>>,
 }
 
 impl Client {
@@ -64,10 +64,10 @@ impl Client {
             id: Client::get_new_id(),
             connection_id,
             connection,
-            status: ConnectionStatus::Connecting, // The client is connecting until he sends a CONNECT request
+            status: RwLock::new(ConnectionStatus::Connecting), // The client is connecting until he sends a CONNECT request
             receiver: None,
             sender: None,
-            life_signe: Arc::new(RwLock::new(Instant::now()))
+            life_signe: Arc::new(RwLock::new(Instant::now())),
         }
     }
     /**
@@ -83,7 +83,7 @@ impl Client {
             .as_nanos() as ClientId)
             ^ random::<ClientId>()
     }
-    
+
     /**
      * This method update the life signe of the client.
      * The life signe is the last time the client sent a datagram to the broker.
@@ -100,9 +100,9 @@ impl Client {
      *
      * @return Vec<DatagramType>, the allowed datagram types for the client.
      */
-    fn get_allowed_datagrams(&self) -> Vec<DatagramType> {
+    async fn get_allowed_datagrams(&self) -> Vec<DatagramType> {
         // Return the allowed actions for the client based on his status
-        match self.status {
+        match *self.status.read().await {
             ConnectionStatus::Connecting => {
                 vec![Connect, ServerStatus]
             }
@@ -211,7 +211,7 @@ impl Client {
             let datagram_bytes: Vec<u8> = client_buf.drain(..bytes_to_drain).collect();
 
             // Check if datagram type is forbidden for the client
-            if !self.get_allowed_datagrams().contains(&dtg_type) {
+            if !self.get_allowed_datagrams().await.contains(&dtg_type) {
                 error!(
                     "Client {} sent an unauthorized datagram type. Got \"{}\"",
                     self.connection_id,
@@ -225,12 +225,14 @@ impl Client {
             // Direct respond to pong and heartbeat requests
             if [Ping, Pong, HeartbeatRequest, Heartbeat].contains(&dtg_type) {
                 let fut = Client::direct_respond(self.connection_id, datagram_bytes.clone());
-                tokio::spawn(async move { fut.await; });
+                tokio::spawn(async move {
+                    fut.await;
+                });
                 continue 'handling;
             }
-            
+
             // Update the life signe of the client because he sent a datagram (whatever the type)
-            
+
             self.update_life_signe().await;
 
             // From here, every command received MUST be handled by the broker
@@ -266,26 +268,26 @@ impl Client {
 
     pub async fn direct_respond(connection_id: ConnectionId, datagram: Vec<u8>) -> Result<()> {
         // Get the client from the global client map
-        let client_locked = match CLIENT_MAP.get(&connection_id) {
+        let client = match CLIENT_MAP.get(&connection_id) {
             None => {
                 // The client has been removed from the hashmap.
                 return Err(Error::MissingClient(connection_id));
             }
             Some(entry) => entry.clone(),
         };
-        
+
         // Directly respond to a client
         let arc_sender = {
             // internal scope to release the lock on the client after the sender is cloned
-            let client = client_locked.read().await;
-            
-            match &client.sender {
+            let client_locked = client.read().await;
+
+            match &client_locked.sender {
                 Some(sender) => sender.clone(),
                 None => {
-                    error!("Client {} has no sender stream!", client.connection_id);
+                    error!("Client {} has no sender stream!", connection_id);
                     return Err(Error::ClientError(format!(
                         "Client {} has no sender stream!",
-                        client.connection_id
+                        connection_id
                     )));
                 }
             }
@@ -295,10 +297,10 @@ impl Client {
         let dtg_type = DatagramType::from(datagram[0]);
         match dtg_type {
             Heartbeat | HeartbeatRequest => {
-                let client = client_locked.read().await;
+                let client_locked = client.read().await;
                 // update the life signe of the client whatever the datagram type
-                client.update_life_signe().await;
-                
+                client_locked.update_life_signe().await;
+
                 if dtg_type == HeartbeatRequest {
                     // if the datagram type is a heartbeat request, respond with a heartbeat
                     let heartbeat_datagram = DtgHeartbeat::new();
