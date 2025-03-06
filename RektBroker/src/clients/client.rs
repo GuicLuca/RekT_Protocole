@@ -13,14 +13,17 @@ use rand::random;
 use rekt_lib::datagrams::connect_requests::DtgConnectAck;
 use rekt_lib::datagrams::heartbeat_requests::DtgHeartbeat;
 use rekt_lib::datagrams::latency_requests::{DtgPing, DtgPong};
+use rekt_lib::datagrams::shutdown_request::DtgShutdown;
 use rekt_lib::enums::connection_status::ConnectionStatus;
 use rekt_lib::enums::datagram_type::DatagramType::{
     Connect, Data, Heartbeat, HeartbeatRequest, ObjectRequest, OpenStream, Ping, Pong,
     ServerStatus, Shutdown, TopicRequest,
 };
 use rekt_lib::enums::datagram_type::{display_datagram_type, DatagramType};
+use rekt_lib::enums::end_connection_reason::EndConnexionReason;
 use rekt_lib::libs::types::ClientId;
 use rekt_lib::libs::utils::get_u16_at_pos;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tokio::time::Instant;
 
@@ -92,6 +95,51 @@ impl Client {
     }
 
     /**
+     * This method disconnect a client from the broker.
+     * The client is removed from the global client map and his streams are closed.
+     *
+     * @return Result<()>
+     */
+    pub async fn disconnect(id: &ConnectionId, reason: EndConnexionReason) -> Result<()> {
+        // 2 - Remove the client from the global client map to prevent further access
+        if let Some((_, client)) = CLIENT_MAP.remove(id) {
+            let read_client = client.read().await;
+            // Check the connection status of the client to prevent multiple disconnections
+            {
+                if *read_client.status.read().await == ConnectionStatus::Disconnecting {
+                    // The client is already disconnecting
+                    return Ok(());
+                }
+            }
+            // 1 - set the connection status to disconnected
+            *read_client.status.write().await = ConnectionStatus::Disconnecting;
+            
+            // 3 - Send a shutdown datagram to the client
+            if read_client.sender.is_none() {
+                error!("Client {} has no sender stream in disconnect!", id);
+            } else {
+                let dtg = DtgShutdown::new(reason);
+                {
+                    let mut sender = read_client.sender.as_ref().unwrap().write().await;
+                    sender.write_all(&dtg.as_bytes()).await?;
+                    // Indicate that we will not send more data
+                    sender.flush().await?;
+                    // Give a fair amount of time to the client to read the datagram
+                    tokio::time::sleep(Duration::from_millis(5)).await;
+                    sender.finish();
+                }
+            }
+
+            // 4 - Close the connection
+            read_client.connection.close(0u32.into(), b"done");
+
+            info!("Client {} has been disconnected.", id);
+        }
+        // else the client is not in client map so we suppose he is already disconnected
+        Ok(())
+    }
+
+    /**
      * This method update the life signe of the client.
      * The life signe is the last time the client sent a datagram to the broker.
      */
@@ -146,7 +194,7 @@ impl Client {
     pub async fn handle_bi_stream(&self) -> Result<()> {
         // Handle the bidirectional stream of a client
         let mut client_buf: Vec<u8> = Vec::with_capacity(10 * 1500); // 15Kb = 10 RekT datagrams maximum
-        
+
         // Send something random to the client to start the communication
         // {
         //     match &self.sender {
@@ -249,6 +297,11 @@ impl Client {
                     fut.await;
                 });
                 continue 'handling;
+            }
+
+            if dtg_type == Shutdown {
+                // Disconnect the client
+                return Ok(());
             }
 
             // Update the life signe of the client because he sent a datagram (whatever the type)

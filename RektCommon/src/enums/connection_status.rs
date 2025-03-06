@@ -13,6 +13,7 @@ pub enum ConnectionStatus {
     Connecting, // The client is connecting to the server ( RekT Handshake )
     Connected, // The client is connected to the server
     Spurious, // The client is connected, but he is late on the heartbeat
+    Disconnecting, // The client is disconnecting from the server
     
     Unknown, // Not a valid status, used for error handling
 }
@@ -29,6 +30,7 @@ pub fn display_connection_status<'a>(status: ConnectionStatus) -> &'a str {
         ConnectionStatus::Connecting => "Connecting",
         ConnectionStatus::Connected => "Connected",
         ConnectionStatus::Spurious => "Spurious",
+        ConnectionStatus::Disconnecting => "Disconnecting",
         ConnectionStatus::Unknown => "Unknown",
     }
 }
@@ -47,6 +49,7 @@ impl From<u8> for ConnectionStatus {
             0x00 => ConnectionStatus::Connecting,
             0x01 => ConnectionStatus::Connected,
             0xF1 => ConnectionStatus::Spurious,
+            0xFF => ConnectionStatus::Disconnecting,
             _ => ConnectionStatus::Unknown,
         }
     }
@@ -65,7 +68,8 @@ impl From<ConnectionStatus> for u8 {
             ConnectionStatus::Connecting => 0x00,
             ConnectionStatus::Connected => 0x01,
             ConnectionStatus::Spurious => 0xF1,
-            ConnectionStatus::Unknown => 0xFF,
+            ConnectionStatus::Disconnecting => 0xFF,
+            ConnectionStatus::Unknown => 0xAA,
         }
     }
 }

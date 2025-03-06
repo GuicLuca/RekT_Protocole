@@ -17,6 +17,7 @@ enum class ConnectionStatus : uint8_t {
     Connecting,
     Connected,
     Spurious,
+    Disconnecting,
     Unknown,
 };
 
@@ -435,4 +436,4 @@ void vec_u8_push_bytes(VecU8 *v, ByteSlice bytes);
 
 void vec_u8_reserve(VecU8 *v, size_t len);
 
-}  // extern "C"
+} // extern "C"

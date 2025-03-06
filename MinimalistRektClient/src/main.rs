@@ -126,7 +126,7 @@ async fn client(config: ClientConfig) -> Result<(), Box<dyn Error>> {
         if let Some(sender) = arc_client_sender.clone() {
             let dtg = DtgHeartbeat::new();
             let mut sender_lock = sender.write().await;
-            sender_lock.write_all(&dtg.as_bytes()).await?;
+            //sender_lock.write_all(&dtg.as_bytes()).await?;
             drop(sender_lock);
         }
         

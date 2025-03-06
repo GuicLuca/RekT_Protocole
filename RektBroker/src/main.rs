@@ -32,6 +32,7 @@ use quinn::rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use quinn::{Connecting, Connection, ConnectionError, Endpoint, ServerConfig};
 use rcgen::CertifiedKey;
 use rekt_lib::enums::datagram_type::DatagramType;
+use rekt_lib::enums::end_connection_reason::EndConnexionReason;
 use rustls::{Certificate, PrivateKey};
 use serde::Serialize;
 use std::io::Bytes;
@@ -181,14 +182,21 @@ async fn open_endpoint() -> Result<()> {
         };
         let connection_process = handle_connection(connecting);
         tokio::spawn(async move {
-            connection_process.await;
+            match connection_process.await{
+                Ok(id) => {
+                    info!("Connection handler for {id} has ended successfully.");
+                }
+                Err(e) => {
+                    error!("A connection handler has ended with error : {}", e);
+                }
+            }
         });
     }
 
     Ok(())
 }
 
-async fn handle_connection(pending_connection: Connecting) -> Result<()> {
+async fn handle_connection(pending_connection: Connecting) -> Result<ConnectionId> {
     // wait for connection handshake
     let mut connection = match pending_connection.await {
         Ok(conn) => conn,
@@ -208,7 +216,7 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
             .map_or_else(|| "<none>".into(), |x| String::from_utf8_lossy(&x).into_owned())
     );
 
-    async {
+    let out_id = async {
         // Open the bidirectional stream to this client
         let connection_id = ConnectionId::from_connection(&connection);
         info!("New connection established with {}", connection_id);
@@ -218,65 +226,72 @@ async fn handle_connection(pending_connection: Connecting) -> Result<()> {
         CLIENT_MAP.entry(connection_id).insert(client);
         info!("-> Client {} added to the client map.", connection_id);
 
-        loop {
-            let client = match CLIENT_MAP.get(&connection_id) {
-                None => {
-                    // The client has been removed from the hashmap.
-                    return Err(Error::MissingClient(connection_id));
-                }
-                Some(entry) => entry.clone(),
-            };
+        let client = match CLIENT_MAP.get(&connection_id) {
+            None => {
+                // The client has been removed from the hashmap.
+                return Err(Error::MissingClient(connection_id));
+            }
+            Some(entry) => entry.clone(),
+        };
 
-            
-            let client_read = client.read().await;
-            let bi_stream = client_read.connection.accept_bi().await;
+        let client_read = client.read().await;
+        let bi_stream = client_read.connection.accept_bi().await;
 
-            match bi_stream {
-                Ok((send, recv)) => {
-                    info!("New bidirectional stream received from {}", connection_id);
-                    // /!\ IMPORTANT : The lock level is converted here to prevent deadlocks by waiting on accept_bi() with a write lock
-                    // register the lock in the queue
-                    let client_mut_fut = client.write(); 
-                    // drop the read lock
-                    drop(client_read);
-                    // wait for the write lock
-                    let mut client_mut = client_mut_fut.await;
-                    client_mut.sender = Some(Arc::from(RwLock::from(send)));
-                    client_mut.receiver = Some(Arc::from(RwLock::from(recv)));
-                    drop(client_mut);
+        match bi_stream {
+            Ok((send, recv)) => {
+                info!("New bidirectional stream received from {}", connection_id);
+                // /!\ IMPORTANT : The lock level is converted here to prevent deadlocks by waiting on accept_bi() with a write lock
+                // register the lock in the queue
+                let client_mut_fut = client.write();
+                // drop the read lock
+                drop(client_read);
+                // wait for the write lock
+                let mut client_mut = client_mut_fut.await;
+                client_mut.sender = Some(Arc::from(RwLock::from(send)));
+                client_mut.receiver = Some(Arc::from(RwLock::from(recv)));
+                drop(client_mut);
+            }
+            Err(e) => {
+                info!("Connection {} closed for reason: {}", connection_id, e);
+                // free the read lock
+                drop(client_read);
+
+                // Remove the client from the hashmap
+                CLIENT_MAP.remove(&connection_id);
+
+                info!("<- Client {} removed from the client map.", connection_id);
+
+                return Ok(connection_id);
+            }
+        };
+
+        {
+            // TODO : this read lock may be as long as the client is connected so it may be a problem if need to be modified
+            // TODO : The current solution is to consider client as constant and encapsulates inner fields in RwLock
+            match client.clone().read().await.handle_bi_stream().await {
+                Err(Error::QuinnRead { .. }) | Err(Error::QuinnReadExact { .. }) => {
+                    info!("Bidirectional stream closed with client {}", connection_id);
                 }
                 Err(e) => {
-                    info!("Connection {} closed for reason: {}", connection_id, e);
-                    // free the read lock
-                    drop(client_read);
-
-                    // Remove the client from the hashmap
-                    CLIENT_MAP.remove(&connection_id);
-
-                    info!("<- Client {} removed from the client map.", connection_id);
-
-                    return Ok(());
+                    error!("Error while handling bidirectional stream: {:?}", e);
                 }
-            };
+                _ => {}
+            }
+        }
 
-            tokio::spawn(async move {
-                // TODO : this read lock may be as long as the client is connected so it may be a problem if need to be modified
-                // TODO : The current solution is to consider client as constant and encapsulates inner fields in RwLock
-                match client.read().await.handle_bi_stream().await {
-                    Err(Error::QuinnRead { .. }) | Err(Error::QuinnReadExact { .. }) => {
-                        info!("Bidirectional stream closed with client {}", connection_id);
-                    }
-                    Err(e) => {
-                        error!("Error while handling bidirectional stream: {:?}", e);
-                    }
-                    _ => {}
-                }
-            });
+        {
+            // Once the stream is closed, disconnect the client
+            if let Err(e) = Client::disconnect(&connection_id, EndConnexionReason::Shutdown).await {
+                error!("Error while disconnecting client {}: {}", connection_id, e);
+                return Err(e);
+            }
+
+            Ok(connection_id)
         }
     }
     .instrument(span)
     .await?;
-    Ok(())
+    Ok(out_id)
 }
 
 /**
