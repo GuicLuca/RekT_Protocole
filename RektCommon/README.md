@@ -14,5 +14,5 @@ the [RekT protocol](https://github.com/GuicLuca/RekT_Protocole/wiki).
 Add the following line to your `Cargo.toml` file:
 
 ```toml
-rekt_common = "0.1.0"
+rekt_common = "0.1.11"
 ```
