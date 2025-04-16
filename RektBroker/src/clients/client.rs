@@ -7,7 +7,7 @@ use crate::errors::Error;
 use crate::errors::Error::InvalidDatagramType;
 use crate::prelude::Result;
 use crate::streams::streams::{RBiStream, RUnreliableStream};
-use crate::{CLIENT_MAP, CONFIG, PACKET_BUFFER};
+use crate::{CLIENT_MAP, CONFIG, PACKET_BUFFER, WORKER_CONDVAR};
 use quinn::{Connection, RecvStream, SendStream};
 use rand::random;
 use rekt_lib::datagrams::connect_requests::DtgConnectAck;
@@ -195,19 +195,6 @@ impl Client {
         // Handle the bidirectional stream of a client
         let mut client_buf: Vec<u8> = Vec::with_capacity(10 * 1500); // 15Kb = 10 RekT datagrams maximum
 
-        // Send something random to the client to start the communication
-        // {
-        //     match &self.sender {
-        //         None => {
-        //             error!("Client {} has no sender stream in handle_bi_stream!", self.connection_id);
-        //         }
-        //         Some(s) => {
-        //             let mut sender = s.write().await;
-        //             sender.write_all(b"hello").await?;
-        //         }
-        //     }
-        // }
-
         'handling: loop {
             let mut network_buf: [u8; 1524] = [0; 1524]; // 1500 bytes + 24 bytes for the QUIC header
 
@@ -307,6 +294,13 @@ impl Client {
             // Update the life signe of the client because he sent a datagram (whatever the type)
 
             self.update_life_signe().await;
+            
+            // TODO: remove this line when the client is fully implemented
+            info!(
+                "Client {} sent a datagram of type \"{}\"",
+                self.connection_id,
+                display_datagram_type(dtg_type)
+            );
 
             // From here, every command received MUST be handled by the broker
             let mut packet_queuing_retry = 0;
@@ -317,6 +311,9 @@ impl Client {
                 }) {
                     Ok(_) => {
                         trace!("New packet enqueued for client {}", self.connection_id);
+                        // Fetch the worker condvar to wake up a worker if the buffer was empty
+                        let (_, ref cvar) = *WORKER_CONDVAR.as_ref();
+                        cvar.notify_one();
                         break 'packet_queuing;
                     }
                     Err(packet) => {

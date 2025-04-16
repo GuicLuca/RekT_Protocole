@@ -1,31 +1,37 @@
 #![allow(unused)]
 
+use lazy_static::lazy_static;
 use log::{error, info, log, trace, warn};
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified};
 use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use quinn::rustls::{DigitallySignedStruct, SignatureScheme};
 use quinn::{ClientConfig, Connection, Endpoint, SendStream};
-use std::error::Error;
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::time::Duration;
-use lazy_static::lazy_static;
 use rekt_lib::datagrams::connect_requests::{DtgConnect, DtgConnectAck, DtgConnectNack};
 use rekt_lib::datagrams::data_request::DtgData;
 use rekt_lib::datagrams::heartbeat_requests::{DtgHeartbeat, DtgHeartbeatRequest};
 use rekt_lib::datagrams::latency_requests::{DtgPing, DtgPong};
 use rekt_lib::datagrams::miscellaneous_requests::{DtgServerStatus, DtgServerStatusACK};
-use rekt_lib::datagrams::object_requests::{DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK};
+use rekt_lib::datagrams::object_requests::{
+    DtgObjectRequest, DtgObjectRequestACK, DtgObjectRequestNACK,
+};
 use rekt_lib::datagrams::shutdown_request::DtgShutdown;
-use rekt_lib::datagrams::topic_request::{DtgTopicRequest, DtgTopicRequestAck, DtgTopicRequestNack};
-use rekt_lib::enums::datagram_type::{display_datagram_type, DatagramType};
+use rekt_lib::datagrams::topic_request::{
+    DtgTopicRequest, DtgTopicRequestAck, DtgTopicRequestNack,
+};
 use rekt_lib::enums::datagram_type::DatagramType::*;
+use rekt_lib::enums::datagram_type::{display_datagram_type, DatagramType};
+use rekt_lib::enums::topic_action::TopicAction;
+use rekt_lib::enums::topic_response::TopicResponse;
 use rekt_lib::libs::types::ClientId;
 use rekt_lib::libs::utils::get_u16_at_pos;
 use rekt_lib::rekt_common_ffi::CDtgObjectRequestACK;
+use std::error::Error;
+use std::net::SocketAddr;
+use std::str::FromStr;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 
@@ -104,16 +110,17 @@ async fn client(config: ClientConfig) -> Result<(), Box<dyn Error>> {
                 info!("Bidirectional stream successfully closed.");
             }
             Err(err) => {
-                error!("Bidirectional stream has crash due to the following error : {:?}", err);
+                error!(
+                    "Bidirectional stream has crash due to the following error : {:?}",
+                    err
+                );
             }
         }
     });
-    
-    
-    
+
     let mut arc_client_sender = None;
     let mut arc_client_heartbeat = None;
-    
+
     info!("Starting the heartbeat task...");
     while CLIENT_IS_RUNNING.load(std::sync::atomic::Ordering::Acquire) {
         // Once the sender is set, send heartbeat until the client close
@@ -122,14 +129,14 @@ async fn client(config: ClientConfig) -> Result<(), Box<dyn Error>> {
             arc_client_sender = client_read.sender.clone();
             arc_client_heartbeat = client_read.heartbeat_period;
         }
-        
+
         if let Some(sender) = arc_client_sender.clone() {
             let dtg = DtgHeartbeat::new();
             let mut sender_lock = sender.write().await;
-            //sender_lock.write_all(&dtg.as_bytes()).await?;
+            sender_lock.write_all(&dtg.as_bytes()).await?;
             drop(sender_lock);
         }
-        
+
         let sleep_duration = {
             if let Some(heartbeat_period) = arc_client_heartbeat.clone() {
                 heartbeat_period
@@ -137,17 +144,16 @@ async fn client(config: ClientConfig) -> Result<(), Box<dyn Error>> {
                 Duration::from_secs(1) // Default value
             }
         };
-        
+
         tokio::time::sleep(sleep_duration).await;
     }
-    
 
     Ok(())
 }
 
 async fn open_bidirectional_stream(connection: &Connection) -> Result<(), Box<dyn Error>> {
     let (mut send, mut recv) = connection.open_bi().await?;
-    
+
     // Store the send stream in the global variable
     {
         let mut client_write = CLIENT_DATA.write().await;
@@ -158,14 +164,13 @@ async fn open_bidirectional_stream(connection: &Connection) -> Result<(), Box<dy
     tokio::spawn(async move {
         handle_bistream_incoming_msg(&mut recv).await;
     });
-    
+
     // send a DtgConnect
     let dtg = DtgConnect::new();
     {
         if let Some(sender) = &CLIENT_DATA.read().await.sender {
             let mut sender = sender.write().await;
             sender.write_all(&dtg.as_bytes()).await?;
-            
         }
     }
 
@@ -182,9 +187,9 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
         if !CLIENT_IS_RUNNING.load(std::sync::atomic::Ordering::Acquire) {
             break 'handling;
         }
-        
+
         let mut network_buf: [u8; 1524] = [0; 1524]; // 1500 bytes + 24 bytes for the QUIC header
-        
+
         {
             match recv.read(&mut network_buf).await? {
                 Some(received) => {
@@ -205,10 +210,12 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
         // Check if the datagram type is valid :
         if dtg_type == Unknown {
             error!(
-                    "Server sent an unknown datagram type. Got \"{}\"",
-                    client_buf[0]
-                );
-            return Err(format!("Invalid datagram type received. Got \"{}\".", client_buf[0]).into());
+                "Server sent an unknown datagram type. Got \"{}\"",
+                client_buf[0]
+            );
+            return Err(
+                format!("Invalid datagram type received. Got \"{}\".", client_buf[0]).into(),
+            );
         }
 
         // Drain the whole buffer :
@@ -216,7 +223,9 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
             if dtg_type.is_sized_datagram() {
                 // the "?" will never throw an error here
                 dtg_type.get_default_byte_size()
-                    + get_u16_at_pos(&client_buf, 1).or_else(|_| Ok::<u16, Box<dyn Error>>(0)).unwrap() as usize
+                    + get_u16_at_pos(&client_buf, 1)
+                        .or_else(|_| Ok::<u16, Box<dyn Error>>(0))
+                        .unwrap() as usize
             } else {
                 dtg_type.get_default_byte_size()
             }
@@ -240,14 +249,26 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
             ConnectAck => {
                 let dtg = DtgConnectAck::try_from(datagram_bytes.as_slice())?;
                 info!("Received a connection ack from the server: {:?}", dtg);
-                
+
                 // Store the connection id in the global variable
                 {
                     let mut client_write = CLIENT_DATA.write().await;
                     client_write.connection_id = dtg.peer_id;
-                    client_write.heartbeat_period = Some(Duration::from_millis(dtg.heartbeat_period as u64));
+                    client_write.heartbeat_period =
+                        Some(Duration::from_millis(dtg.heartbeat_period as u64));
                 }
-                info!("Local client updated with connection id: {} and heartbeat period: {} ms.", dtg.peer_id, dtg.heartbeat_period);
+                info!(
+                    "Local client updated with connection id: {} and heartbeat period: {} ms.",
+                    dtg.peer_id, dtg.heartbeat_period
+                );
+
+                let dtg = DtgServerStatus::new();
+                {
+                    if let Some(sender) = &CLIENT_DATA.read().await.sender {
+                        let mut sender = sender.write().await;
+                        sender.write_all(&dtg.as_bytes()).await?;
+                    }
+                }
             }
             ConnectNack => {
                 let dtg = DtgConnectNack::try_from(datagram_bytes.as_slice())?;
@@ -280,6 +301,14 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
             ServerStatusAck => {
                 let dtg = DtgServerStatusACK::try_from(datagram_bytes.as_slice())?;
                 info!("Received a server status ack from the server: {:?}", dtg);
+
+                let dtg = DtgTopicRequest::new(TopicAction::Subscribe, 0x00000001);
+                {
+                    if let Some(sender) = &CLIENT_DATA.read().await.sender {
+                        let mut sender = sender.write().await;
+                        sender.write_all(&dtg.as_bytes()).await?;
+                    }
+                }
             }
             TopicRequest => {
                 let dtg = DtgTopicRequest::try_from(datagram_bytes.as_slice())?;
@@ -288,6 +317,17 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
             TopicRequestAck => {
                 let dtg = DtgTopicRequestAck::try_from(datagram_bytes.as_slice())?;
                 info!("Received a topic request ack from the server: {:?}", dtg);
+
+                // prevent infinite recursion
+                if dtg.flag == TopicResponse::SubSuccess {
+                    let dtg = DtgTopicRequest::new(TopicAction::Unsubscribe, dtg.topic_id);
+                    {
+                        if let Some(sender) = &CLIENT_DATA.read().await.sender {
+                            let mut sender = sender.write().await;
+                            sender.write_all(&dtg.as_bytes()).await?;
+                        }
+                    }
+                }
             }
             TopicRequestNack => {
                 let dtg = DtgTopicRequestNack::try_from(datagram_bytes.as_slice())?;
@@ -310,16 +350,16 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
                 info!("Received data from the server: {:?}", dtg);
             }
             _ => {
-                info!("Received an unknown (or invalid) datagram type from the server: {}", display_datagram_type(dtg_type));
+                info!(
+                    "Received an unknown (or invalid) datagram type from the server: {}",
+                    display_datagram_type(dtg_type)
+                );
             }
         }
     }
-    
+
     Ok(())
 }
-
-
-
 
 // UNUSED FUNCTIONS
 

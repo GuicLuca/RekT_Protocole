@@ -60,6 +60,9 @@ pub enum Error {
     
     #[error("[Invalid datagram type] - The datagram type {0} is invalid.")]
     InvalidDatagramType(u8),
+    
+    #[error("[Invalid topic id] - The topic id {0} is invalid: {1}")]
+    InvalidTopicId(u64, String),
 }
 
 // Custom conversion from &ConnectionError to ConnectionError

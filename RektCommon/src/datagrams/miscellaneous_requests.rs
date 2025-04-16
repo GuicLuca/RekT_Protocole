@@ -65,7 +65,7 @@ impl DtgServerStatusACK {
     }
 
     pub const fn get_default_byte_size() -> usize {
-        9
+         1 + size_of::<ClientId>()
     }
 }
 

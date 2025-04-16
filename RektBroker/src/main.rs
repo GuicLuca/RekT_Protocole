@@ -42,6 +42,8 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::sleep;
+use rekt_lib::datagrams::miscellaneous_requests::DtgServerStatusACK;
+use rekt_lib::libs::types::{ClientId, TopicId};
 use tokio::io::AsyncWriteExt;
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
@@ -49,6 +51,7 @@ use tokio::task::JoinHandle;
 use tokio::time::Sleep;
 use tokio::{join, task, try_join};
 use tracing::Instrument;
+use crate::topics::Topic;
 
 mod clients;
 mod config;
@@ -56,6 +59,7 @@ mod errors;
 mod job_system;
 mod prelude;
 mod streams;
+mod topics;
 
 lazy_static! {
     // Global config and general purpose vars
@@ -68,23 +72,9 @@ lazy_static! {
     // Job system vars
     static ref PACKET_BUFFER: Arc<ArrayQueue<Packet>> = Arc::new(ArrayQueue::new(CONFIG.packet_buffer_size.into()));
     static ref WORKER_CONDVAR: Arc<(Mutex<bool>, Condvar)> = Arc::new((Mutex::new(false), Condvar::new()));
-
-/*
-    // Old global vars not used for now (not implemented yet)
-    // List of client's :
-    static ref CLIENTS_SENDERS_REF: ClientsHashMap<ClientSender> = Arc::new(RwLock::new(HashMap::default())); // <Client ID, Sender> -> the sender is used to sent command through the mpsc channels
-    static ref CLIENTS_STRUCTS_REF: ClientsHashMap<Arc<Mutex<Client>>> = Arc::new(RwLock::new(HashMap::default())); // <Client ID, Struct> -> used only to keep struct alive
-    static ref CLIENTS_ADDRESSES_REF: ClientsHashMap<SocketAddr> = Arc::new(RwLock::new(HashMap::default())); // <Client ID, address> -> Used to send data
-
-    // List of time reference for ping requests
-    static ref PINGS_REF: PingsHashMap = Arc::new(Mutex::new(HashMap::default())); // <Ping ID, reference time in ms>
-
-    // List of topic subscribers
-    static ref TOPICS_SUBSCRIBERS_REF: TopicsHashMap<HashSet<ClientId>> = Arc::new(RwLock::new(HashMap::default())); // <Topic ID, [Clients ID]>
-
-    // List of Objects (group of topics)
-    static ref OBJECTS_TOPICS_REF: ObjectHashMap<HashSet<TopicId>> = Arc::new(RwLock::new(HashMap::default())); // <ObjectId, [TopicId]>
-    static ref OBJECT_SUBSCRIBERS_REF: ObjectHashMap<HashSet<ClientId>>  = Arc::new(RwLock::new(HashMap::default())); // <ObjectId, [ClientId]>*/
+    
+    // Data related server
+    static ref TOPICS: Arc<DashMap<TopicId, Topic<'static>>> = Arc::new(DashMap::new());
 }
 
 #[tokio::main]
@@ -328,10 +318,24 @@ async fn handle_datagram(packet: Packet) {
     // 2 - Handle the datagram according to its type
     match DatagramType::from(packet.datagram[0]) {
         // TODO : Implement the following cases
-        DatagramType::ServerStatus => {}
-        DatagramType::TopicRequest => {}
+        DatagramType::ServerStatus => {
+            // ClientID::MAX is the maximum amount of client connected with valid ID.
+            let dtg = DtgServerStatusACK::new(CLIENT_MAP.len() as ClientId);
+            
+            // send the datagram to the client
+            {
+                let mut sender = sender.write().await;
+                let send_result = sender.write_all(&dtg.as_bytes()).await; 
+            }
+        }
+        DatagramType::TopicRequest => {
+            Topic::handle_topic_request(packet).await;
+        }
         DatagramType::ObjectRequest => {}
-        DatagramType::Data => {}
+        DatagramType::Data => {
+            // 1- find the topic
+            // 2- publish the data on it
+        }
 
         // Following cases are authorized to be sent in the job system but not implemented
         DatagramType::OpenStream => {
@@ -353,7 +357,7 @@ async fn handle_datagram(packet: Packet) {
         | DatagramType::Pong => {
             // those datagram types are not authorized to be sent in the job system and MUST be handled before in the client router (see client.rs::handle_bi_stream::direct_respond)
             trace!(
-                "Datagram type {} is should not be sent in the job system.",
+                "Datagram type {} should not be sent in the job system but only being responded directly upon reception.",
                 packet.datagram[0]
             );
 
@@ -368,7 +372,7 @@ async fn handle_datagram(packet: Packet) {
         | DatagramType::Shutdown => {
             // those datagram types are not handled in the job system, they are handled in the connection process
             trace!(
-                "Datagram type {} is should not be sent in the job system.",
+                "Datagram type {} should not be sent in the job system (Handled in the connection process).",
                 packet.datagram[0]
             );
             // nothing to do here
