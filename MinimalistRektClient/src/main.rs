@@ -7,6 +7,7 @@ use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified}
 use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use quinn::rustls::{DigitallySignedStruct, SignatureScheme};
 use quinn::{ClientConfig, Connection, Endpoint, SendStream};
+use rand::Rng;
 use rekt_lib::datagrams::connect_requests::{DtgConnect, DtgConnectAck, DtgConnectNack};
 use rekt_lib::datagrams::data_request::DtgData;
 use rekt_lib::datagrams::heartbeat_requests::{DtgHeartbeat, DtgHeartbeatRequest};
@@ -27,6 +28,7 @@ use rekt_lib::libs::types::ClientId;
 use rekt_lib::libs::utils::get_u16_at_pos;
 use rekt_lib::rekt_common_ffi::CDtgObjectRequestACK;
 use std::error::Error;
+use std::io::Read;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
@@ -34,6 +36,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 
 #[macro_use]
 extern crate pretty_env_logger;
@@ -55,6 +58,15 @@ lazy_static! {
         heartbeat_period: None,
     }));
     static ref CLIENT_IS_RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
+    static ref DELAY: Duration = {
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() > 1 {
+            let delay = args[1].parse::<u64>().unwrap_or(0);
+            Duration::from_secs(delay)
+        } else {
+            Duration::from_secs(0)
+        }
+    };
 }
 
 #[tokio::main]
@@ -63,6 +75,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     pretty_env_logger::init();
 
     info!("Starting client: ");
+    info!("Delay set to {} seconds", DELAY.as_secs());
 
     let mut crypto = quinn::rustls::ClientConfig::builder()
         .dangerous()
@@ -87,9 +100,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn client(config: ClientConfig) -> Result<(), Box<dyn Error>> {
-    let addr = "127.0.0.1:6666";
+    let addr = format!("127.0.0.1:{}", rand::rng().random_range(10000..=65535));
     // Bind this endpoint to a UDP socket on the given client address.
-    let mut endpoint = Endpoint::client(SocketAddr::from_str(addr)?)?;
+    let mut endpoint = Endpoint::client(SocketAddr::from_str(&addr)?)?;
     endpoint.set_default_client_config(config);
 
     // Connect to the server passing in the server name which is supposed to be in the server certificate.
@@ -194,7 +207,7 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
             match recv.read(&mut network_buf).await? {
                 Some(received) => {
                     // Handle the received bytes
-                    trace!("Received {} bytes from server", received);
+                    info!("Received {} bytes from server", received);
                     client_buf.extend_from_slice(&network_buf[..received]);
                 }
                 None => {
@@ -234,6 +247,11 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
         // Ensure that the buffer is big enough to drain the bytes
         if client_buf.len() < bytes_to_drain {
             // Not enough bytes received yet, continue the loop to collect more bytes
+            info!(
+                "Not enough bytes received yet. Expected {} bytes, got {} bytes.",
+                bytes_to_drain,
+                client_buf.len()
+            );
             continue 'handling;
         }
 
@@ -306,6 +324,7 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
                 {
                     if let Some(sender) = &CLIENT_DATA.read().await.sender {
                         let mut sender = sender.write().await;
+                        warn!("--> Sending TopicRequest to the server");
                         sender.write_all(&dtg.as_bytes()).await?;
                     }
                 }
@@ -320,11 +339,13 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
 
                 // prevent infinite recursion
                 if dtg.flag == TopicResponse::SubSuccess {
-                    let dtg = DtgTopicRequest::new(TopicAction::Unsubscribe, dtg.topic_id);
+                    sleep(*DELAY).await;
+                    let dtg = DtgData::new(0, dtg.topic_id, "Hello world!".as_bytes().to_vec());
                     {
                         if let Some(sender) = &CLIENT_DATA.read().await.sender {
                             let mut sender = sender.write().await;
                             sender.write_all(&dtg.as_bytes()).await?;
+                            warn!("--> Sent data to the server");
                         }
                     }
                 }
@@ -348,6 +369,17 @@ async fn handle_bistream_incoming_msg(recv: &mut quinn::RecvStream) -> Result<()
             Data => {
                 let dtg = DtgData::try_from(datagram_bytes.as_slice())?;
                 info!("Received data from the server: {:?}", dtg);
+
+                if DELAY.as_secs() == 0 {
+                    let dtg = DtgData::new(0, dtg.topic_id, "Hello world!".as_bytes().to_vec());
+                    {
+                        if let Some(sender) = &CLIENT_DATA.read().await.sender {
+                            let mut sender = sender.write().await;
+                            sender.write_all(&dtg.as_bytes()).await?;
+                            warn!("--> Sending data to the server after data");
+                        }
+                    }
+                }
             }
             _ => {
                 info!(

@@ -15,3 +15,4 @@ tokio = {version ="1.33.0", features = ["full"]} # async
 rustls = { version = "*", features = ["quic", "dangerous_configuration"] }
 rekt_lib = "0.1.9"
 lazy_static = "1.5.0"
+rand = "0.9.0"

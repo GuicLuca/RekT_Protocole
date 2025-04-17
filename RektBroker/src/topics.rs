@@ -11,20 +11,21 @@ use rekt_lib::libs::types::TopicId;
 use std::cmp::PartialEq;
 use std::sync::Arc;
 use rekt_lib::datagrams::data_request::DtgData;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 
 #[derive(Debug)]
-pub struct Topic<'a> {
+pub struct Topic {
     pub id: TopicId,
-    pub saved_data: &'a [u8],
+    pub saved_data: RwLock<Vec<u8>>,
     pub subscribers: ClientSenderMap,
 }
 
-impl<'a> Topic<'a> {
-    pub fn new(id: TopicId) -> Topic<'a> {
+impl Topic {
+    pub fn new(id: TopicId) -> Topic {
         Topic {
             id,
-            saved_data: &[],
+            saved_data: RwLock::new(Vec::new()),
             subscribers: ClientSenderMap::new(DashMap::new()),
         }
     }
@@ -66,6 +67,14 @@ impl<'a> Topic<'a> {
 
         Ok(out_id)
     }
+    
+    /**
+     * This function returns the topic id as a server topic id
+     */
+    pub fn get_topic_id_as_server(in_id: TopicId) -> TopicId {
+        // Get the topic id as a server topic
+        in_id | (1u64 << 63)
+    }
 
     /**
      * Handle a topic request from a client.
@@ -101,7 +110,7 @@ impl<'a> Topic<'a> {
         match datagram.flag {
             TopicAction::Subscribe => {
                 // Check if the topic exists
-                let topic = TOPICS.get_mut(&datagram.topic_id);
+                let topic = TOPICS.get_mut(&Self::get_topic_id_as_server(datagram.topic_id));
                 if topic.is_none() {
                     // Topic does not exist, create it
                     match Topic::enforce_id(datagram.topic_id) {
@@ -145,10 +154,11 @@ impl<'a> Topic<'a> {
                 } else {
                     // Add the client to the topic
                     let mut topic = topic.unwrap();
-                    topic.value_mut().add_subscriber(&packet.source, sender.clone());
+                    let topic = topic.value_mut();
+                    topic.add_subscriber(&packet.source, sender.clone());
                     
                     // Send a response to the client
-                    let dtg = DtgTopicRequestAck::new(datagram.topic_id, TopicResponse::SubSuccess);
+                    let dtg = DtgTopicRequestAck::new(topic.id, TopicResponse::SubSuccess);
 
                     // Send the datagram to the client
                     {
@@ -156,11 +166,11 @@ impl<'a> Topic<'a> {
                     }
                     
                     // Send the saved data to the client
-                    topic.value().send_saved_data(packet.source).await;
+                    topic.send_saved_data(packet.source).await;
                     
                     info!(
                         "Client {} subscribed to topic {}. Topic was preexisting, so saved data were sent.",
-                        packet.source, topic.key());
+                        packet.source, topic.id);
                 }
             }
             TopicAction::Unsubscribe => {
@@ -241,9 +251,12 @@ impl<'a> Topic<'a> {
      * If a connection_id is provided, it will be excluded from the publishing process.
      * This is useful for sending data to all clients except the one that sent the data.
      */
-    pub async fn publish(&mut self, data: &'a [u8], excluded_connection: Option<ConnectionId>) {
-        self.saved_data = data;
-
+    pub async fn publish(&mut self, data: &Vec<u8>, excluded_connection: Option<ConnectionId>) {
+        {
+            let mut saved_data = self.saved_data.write().await;
+            *saved_data = data.to_owned();
+        }
+        
         // Filter out the excluded connection if provided
         let subscribers = {
             if let Some(id) = excluded_connection {
@@ -255,11 +268,12 @@ impl<'a> Topic<'a> {
                 self.subscribers.iter().collect::<Vec<_>>()
             }
         };
-
+        
+        
         for subscriber in subscribers {
             let sender = subscriber.value();
             
-            let dtg = DtgData::new(0, self.id, self.saved_data.to_vec());
+            let dtg = DtgData::new(0, self.id, data.to_vec());
             {
                 sender.write().await.write_all(&dtg.as_bytes()).await;
             }
@@ -271,10 +285,18 @@ impl<'a> Topic<'a> {
      * The client MUST be already subscribed to the topic.
      */
     pub async fn send_saved_data(&self, client_id: ConnectionId) {
-        if let Some(sender) = self.subscribers.get(&client_id) {
-            let dtg = DtgData::new(0, self.id, self.saved_data.to_vec());
+        if let Some(sender) = self.subscribers.get(&client_id) 
+        {
+            let data ={
+                 self.saved_data.read().await.to_vec()
+            };
+            
+            let dtg = DtgData::new(5, self.id, data);
+            
             {
-                sender.write().await.write_all(&dtg.as_bytes()).await;
+                let mut s =sender.write().await;
+                s.write_all(&dtg.as_bytes()).await;
+                s.flush();
             }
         } else {
             error!(

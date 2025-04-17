@@ -42,6 +42,7 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::sleep;
+use rekt_lib::datagrams::data_request::DtgData;
 use rekt_lib::datagrams::miscellaneous_requests::DtgServerStatusACK;
 use rekt_lib::libs::types::{ClientId, TopicId};
 use tokio::io::AsyncWriteExt;
@@ -60,6 +61,7 @@ mod job_system;
 mod prelude;
 mod streams;
 mod topics;
+mod object;
 
 lazy_static! {
     // Global config and general purpose vars
@@ -74,7 +76,7 @@ lazy_static! {
     static ref WORKER_CONDVAR: Arc<(Mutex<bool>, Condvar)> = Arc::new((Mutex::new(false), Condvar::new()));
     
     // Data related server
-    static ref TOPICS: Arc<DashMap<TopicId, Topic<'static>>> = Arc::new(DashMap::new());
+    static ref TOPICS: Arc<DashMap<TopicId, Topic>> = Arc::new(DashMap::new());
 }
 
 #[tokio::main]
@@ -333,8 +335,31 @@ async fn handle_datagram(packet: Packet) {
         }
         DatagramType::ObjectRequest => {}
         DatagramType::Data => {
+            let dtg = match DtgData::try_from(packet.datagram.as_slice())
+            {
+                Ok(dtg) => {dtg}
+                Err(e) => {
+                    error!("Error while converting datagram from {} to DtgData: {}", packet.source, e);
+                    return;
+                }
+            };
+            
             // 1- find the topic
-            // 2- publish the data on it
+            let mut topic = match TOPICS.get_mut(&dtg.topic_id) {
+                Some(topic) => topic,
+                None => {
+                    error!(
+                        "Client {} tried to send data on an unknown topic {}.",
+                        packet.source, dtg.topic_id
+                    );
+                    
+                    // Here some feedbacks would be nice for the client in a real implementation
+                    return;
+                }
+            };
+            
+            // 2- publish the data on it avoiding the source of the update
+            topic.value_mut().publish(&dtg.payload, Some(packet.source)).await;
         }
 
         // Following cases are authorized to be sent in the job system but not implemented
