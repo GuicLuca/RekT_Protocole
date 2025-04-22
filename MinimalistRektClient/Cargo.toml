@@ -16,3 +16,5 @@ rustls = { version = "*", features = ["quic", "dangerous_configuration"] }
 rekt_lib = "0.1.9"
 lazy_static = "1.5.0"
 rand = "0.9.0"
+crossbeam-queue = "0.3.12"
+parking_lot = "0.12.3"

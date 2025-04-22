@@ -21,7 +21,7 @@ categories = ["game-development"]
 license = "MIT"
 
 [lib]
-crate-type = ["staticlib", "lib"]
+crate-type = ["staticlib", "lib", "cdylib"]
 
 [build-dependencies]
 cbindgen = "0.28.0"
