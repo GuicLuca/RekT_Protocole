@@ -285,6 +285,10 @@ impl Topic {
      * The client MUST be already subscribed to the topic.
      */
     pub async fn send_saved_data(&self, client_id: ConnectionId) {
+        if self.saved_data.read().await.is_empty() {
+            return;
+        }
+        
         if let Some(sender) = self.subscribers.get(&client_id) 
         {
             let data ={

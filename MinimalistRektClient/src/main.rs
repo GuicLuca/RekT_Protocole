@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use std::cmp::PartialEq;
+use std::collections::HashSet;
 use lazy_static::lazy_static;
 use log::{error, info, log, trace, warn};
 use quinn::crypto::rustls::QuicClientConfig;
@@ -34,6 +36,7 @@ use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
+use rekt_lib::enums::object_request_action::ObjectRequestAction;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
@@ -43,11 +46,28 @@ extern crate pretty_env_logger;
 
 static PAYLOAD_SIZE: usize = 1024;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ClientRole {
+    Default,
+    TopicPublisher,
+    ObjectPublisher,
+}
+
+impl ClientRole {
+    pub fn display(&self) -> &str {
+        match self {
+            ClientRole::Default => "Default",
+            ClientRole::TopicPublisher => "TopicPublisher",
+            ClientRole::ObjectPublisher => "ObjectPublisher",
+        }
+    }
+}
+
 lazy_static! {
     static ref SENDER: Arc<RwLock<Option<SendStream>>> = Arc::new(RwLock::new(None));
     static ref CONNECTION_ID: Arc<RwLock<Option<ClientId>>> = Arc::new(RwLock::new(None));
     static ref HEARTBEAT_PERIOD: Arc<RwLock<Option<Duration>>> = Arc::new(RwLock::new(None));
-    
+
     static ref CLIENT_IS_RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
     static ref DELAY: Duration = {
         let args: Vec<String> = std::env::args().collect();
@@ -56,6 +76,22 @@ lazy_static! {
             Duration::from_secs(delay)
         } else {
             Duration::from_secs(0)
+        }
+    };
+
+    static ref ROLE: ClientRole = {
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() > 2 { // 1 = program name, 2 = delay, so 3 = role
+            let role = &args[2];
+            if role == "t" {
+                ClientRole::TopicPublisher
+            } else if role == "o" {
+                ClientRole::ObjectPublisher
+            } else {
+                panic!("Invalid role. Use 'topic: t' or 'object: o'.");
+            }
+        } else {
+            ClientRole::Default // Default value
         }
     };
 }
@@ -178,19 +214,19 @@ async fn handle_bistream_incoming_msg(mut recv: RecvStream) -> Result<(), Box<dy
         } // End of the lock on the receiver stream
 
         'emptying: loop {
-            if client_buf.is_empty() { 
+            if client_buf.is_empty() {
                 // No datagram to process, break the loop
                 continue 'handling;
             }
-            
+
             let dtg_type = DatagramType::from(client_buf[0]);
 
             // Check if the datagram type is valid :
             if dtg_type == Unknown {
                 error!(
-                "Server sent an unknown datagram type. Got \"{}\"",
-                client_buf[0]
-            );
+                    "Server sent an unknown datagram type. Got \"{}\"",
+                    client_buf[0]
+                );
                 return Err(
                     format!("Invalid datagram type received. Got \"{}\".", client_buf[0]).into(),
                 );
@@ -202,7 +238,8 @@ async fn handle_bistream_incoming_msg(mut recv: RecvStream) -> Result<(), Box<dy
                     // the "?" will never throw an error here
                     dtg_type.get_default_byte_size()
                         + get_u16_at_pos(&client_buf, 1)
-                        .or_else(|_| Ok::<u16, Box<dyn Error>>(0))? as usize
+                            .or_else(|_| Ok::<u16, Box<dyn Error>>(0))?
+                            as usize
                 } else {
                     dtg_type.get_default_byte_size()
                 }
@@ -212,10 +249,10 @@ async fn handle_bistream_incoming_msg(mut recv: RecvStream) -> Result<(), Box<dy
             if client_buf.len() < bytes_to_drain {
                 // Not enough bytes received yet, continue the loop to collect more bytes
                 info!(
-                "Not enough bytes received yet. Expected {} bytes, got {} bytes.",
-                bytes_to_drain,
-                client_buf.len()
-            );
+                    "Not enough bytes received yet. Expected {} bytes, got {} bytes.",
+                    bytes_to_drain,
+                    client_buf.len()
+                );
                 continue 'handling;
             }
 
@@ -241,9 +278,9 @@ async fn handle_bistream_incoming_msg(mut recv: RecvStream) -> Result<(), Box<dy
                             Some(Duration::from_millis(dtg.heartbeat_period as u64));
                     }
                     info!(
-                    "Local client updated with connection id: {} and heartbeat period: {} ms.",
-                    dtg.peer_id, dtg.heartbeat_period
-                );
+                        "Local client updated with connection id: {} and heartbeat period: {} ms.",
+                        dtg.peer_id, dtg.heartbeat_period
+                    );
 
                     let dtg = DtgServerStatus::new();
                     send_dtg(&dtg.as_bytes()).await;
@@ -280,10 +317,21 @@ async fn handle_bistream_incoming_msg(mut recv: RecvStream) -> Result<(), Box<dy
                     let dtg = DtgServerStatusACK::try_from(datagram_bytes.as_slice())?;
                     info!("Received a server status ack from the server: {:?}", dtg);
 
-                    let dtg = DtgTopicRequest::new(TopicAction::Subscribe, 0x00000001);
-                    send_dtg(&dtg.as_bytes()).await;
-                    warn!("--> Sending TopicRequest to the server");
-
+                    if *ROLE == ClientRole::TopicPublisher || *ROLE == ClientRole::Default {
+                        // Send a topic request to the server
+                        let dtg = DtgTopicRequest::new(TopicAction::Subscribe, 0x00000001);
+                        send_dtg(&dtg.as_bytes()).await;
+                        warn!("--> Sending TopicRequest to the server as {}", ROLE.display());
+                    } else if *ROLE == ClientRole::ObjectPublisher {
+                        // Send an object request to the server
+                        let dtg = DtgObjectRequest::new(
+                            ObjectRequestAction::Create,
+                            0x00000001,
+                            HashSet::from([0x00000005, 0x00000001, 0x00000002, 0x00000003]),
+                        );
+                        send_dtg(&dtg.as_bytes()).await;
+                        warn!("--> Sending ObjectRequest to the server as {}", ROLE.display());
+                    }
                 }
                 TopicRequest => {
                     let dtg = DtgTopicRequest::try_from(datagram_bytes.as_slice())?;
@@ -315,23 +363,35 @@ async fn handle_bistream_incoming_msg(mut recv: RecvStream) -> Result<(), Box<dy
                 }
                 ObjectRequestNack => {
                     let dtg = DtgObjectRequestNACK::try_from(datagram_bytes.as_slice())?;
-                    info!("Received an object request nack from the server: {:?}", dtg);
+                    info!("Received an object request nack from the server: {:?}", String::from_utf8(dtg.payload));
                 }
                 Data => {
                     let dtg = DtgData::try_from(datagram_bytes.as_slice())?;
                     info!("Received data from the server: {:?}", dtg);
 
-                    if DELAY.as_secs() == 0 {
-                        let dtg = DtgData::new(0, dtg.topic_id, "Hello world!".as_bytes().to_vec());
-                        send_dtg(&dtg.as_bytes()).await;
-                        warn!("--> Sending data to the server after Data");
+                    if *ROLE == ClientRole::ObjectPublisher {
+                        if DELAY.as_secs() > 0 { 
+                            error!("Sleeping for {} seconds before deleting the object", DELAY.as_secs());
+                            sleep(*DELAY).await;
+                            
+                            let dtg = DtgObjectRequest::new(
+                                ObjectRequestAction::Delete,
+                                9223372036854775809,
+                                HashSet::new(),
+                            );
+                            send_dtg(&dtg.as_bytes()).await;
+                        }else {
+                            let dtg = DtgData::new(0, dtg.topic_id, "Hello world!".as_bytes().to_vec());
+                            send_dtg(&dtg.as_bytes()).await;
+                            warn!("--> Sending data to the server after Data");
+                        }
                     }
                 }
                 _ => {
                     info!(
-                    "Received an unknown (or invalid) datagram type from the server: {}",
-                    display_datagram_type(dtg_type)
-                );
+                        "Received an unknown (or invalid) datagram type from the server: {}",
+                        display_datagram_type(dtg_type)
+                    );
                 }
             }
         } // End of the emptying loop

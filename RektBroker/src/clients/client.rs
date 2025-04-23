@@ -204,7 +204,7 @@ impl Client {
                     Some(receiver) => receiver.clone(),
                     None => {
                         error!("Client {} has no receiver stream!", self.connection_id);
-                        return Err(Error::ClientError(format!(
+                        return Err(Error::ClientErr(format!(
                             "Client {} has no receiver stream!",
                             self.connection_id
                         )));
@@ -355,7 +355,7 @@ impl Client {
                 Some(sender) => sender.clone(),
                 None => {
                     error!("Client {} has no sender stream!", connection_id);
-                    return Err(Error::ClientError(format!(
+                    return Err(Error::ClientErr(format!(
                         "Client {} has no sender stream!",
                         connection_id
                     )));

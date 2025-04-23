@@ -56,13 +56,16 @@ pub enum Error {
     MissingClient(ConnectionId),
     
     #[error("[Client Error] - {0}")]
-    ClientError(String),
+    ClientErr(String),
     
     #[error("[Invalid datagram type] - The datagram type {0} is invalid.")]
     InvalidDatagramType(u8),
     
     #[error("[Invalid topic id] - The topic id {0} is invalid: {1}")]
     InvalidTopicId(u64, String),
+    
+    #[error("[Invalid object id] - The object id {0} is invalid: {1}")]
+    InvalidObjectId(u64, String),
 }
 
 // Custom conversion from &ConnectionError to ConnectionError

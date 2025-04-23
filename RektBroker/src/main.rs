@@ -44,7 +44,7 @@ use std::sync::Arc;
 use std::thread::sleep;
 use rekt_lib::datagrams::data_request::DtgData;
 use rekt_lib::datagrams::miscellaneous_requests::DtgServerStatusACK;
-use rekt_lib::libs::types::{ClientId, TopicId};
+use rekt_lib::libs::types::{ClientId, ObjectId, TopicId};
 use tokio::io::AsyncWriteExt;
 use tokio::net::UdpSocket;
 use tokio::sync::RwLock;
@@ -52,6 +52,7 @@ use tokio::task::JoinHandle;
 use tokio::time::Sleep;
 use tokio::{join, task, try_join};
 use tracing::Instrument;
+use crate::object::Object;
 use crate::topics::Topic;
 
 mod clients;
@@ -77,6 +78,7 @@ lazy_static! {
     
     // Data related server
     static ref TOPICS: Arc<DashMap<TopicId, Topic>> = Arc::new(DashMap::new());
+    static ref OBJECTS: Arc<DashMap<ObjectId, Object>> = Arc::new(DashMap::new());
 }
 
 #[tokio::main]
@@ -319,7 +321,6 @@ async fn handle_datagram(packet: Packet) {
 
     // 2 - Handle the datagram according to its type
     match DatagramType::from(packet.datagram[0]) {
-        // TODO : Implement the following cases
         DatagramType::ServerStatus => {
             // ClientID::MAX is the maximum amount of client connected with valid ID.
             let dtg = DtgServerStatusACK::new(CLIENT_MAP.len() as ClientId);
@@ -333,7 +334,9 @@ async fn handle_datagram(packet: Packet) {
         DatagramType::TopicRequest => {
             Topic::handle_topic_request(packet).await;
         }
-        DatagramType::ObjectRequest => {}
+        DatagramType::ObjectRequest => {
+            Object::handle_object_request(packet).await;
+        }
         DatagramType::Data => {
             let dtg = match DtgData::try_from(packet.datagram.as_slice())
             {
