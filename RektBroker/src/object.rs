@@ -1,7 +1,7 @@
 use crate::clients::client::{ConnectionId, Packet};
 use crate::prelude::ClientSenderMap;
 use crate::topics::Topic;
-use crate::{CLIENT_MAP, OBJECTS, TOPICS};
+use crate::{increase_profiling_data, CLIENT_MAP, OBJECTS, PROFILING_DATA, TOPICS};
 use dashmap::mapref::one::RefMut;
 use dashmap::DashSet;
 use rand::Rng;
@@ -54,7 +54,8 @@ impl Object {
                 }
             } else {
                 // Topic already exists, add it to the object
-                final_topic_list.insert(topic.unwrap().id);
+                let t = topic.unwrap();
+                final_topic_list.insert(t.id);
             }
         }
 
@@ -239,6 +240,9 @@ impl Object {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Object::Create");
+
                     return;
                 }
 
@@ -262,6 +266,8 @@ impl Object {
                         {
                             sender.write().await.write_all(&dtg.as_bytes()).await;
                         }
+
+                        increase_profiling_data("Object::Create");
                     }
                     Err(e) => {
                         error!("Error while creating object: {}", e);
@@ -298,6 +304,8 @@ impl Object {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Object::Delete");
                     return;
                 }
 
@@ -321,6 +329,8 @@ impl Object {
                     sender.write().await.write_all(&dtg.as_bytes()).await;
                 }
 
+                increase_profiling_data("Object::Delete");
+
                 // Unsubscribe all other clients from the object
                 for client_id in subscribers.iter() {
                     object.remove_subscriber(*client_id).await;
@@ -342,7 +352,11 @@ impl Object {
                                 continue;
                             }
                         };
-                        sender.write().await.write_all(&dtg.as_bytes()).await;
+                        {
+                            sender.write().await.write_all(&dtg.as_bytes()).await;
+                        }
+
+                        increase_profiling_data("Object::Delete");
                     }
                 }
 
@@ -367,6 +381,8 @@ impl Object {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Object::Subscribe");
                     return;
                 }
 
@@ -385,6 +401,8 @@ impl Object {
                 {
                     sender.write().await.write_all(&dtg.as_bytes()).await;
                 }
+
+                increase_profiling_data("Object::Subscribe");
             }
             ObjectRequestAction::Unsubscribe => {
                 // Check if the object exists
@@ -404,6 +422,8 @@ impl Object {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Object::Unsubscribe");
                     return;
                 }
 
@@ -422,6 +442,8 @@ impl Object {
                 {
                     sender.write().await.write_all(&dtg.as_bytes()).await;
                 }
+
+                increase_profiling_data("Object::Unsubscribe");
             }
             ObjectRequestAction::Unknown => {
                 warn!(

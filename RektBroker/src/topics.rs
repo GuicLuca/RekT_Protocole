@@ -1,6 +1,6 @@
 use crate::clients::client::{ConnectionId, Packet};
 use crate::prelude::ClientSenderMap;
-use crate::{CLIENT_MAP, TOPICS};
+use crate::{increase_profiling_data, CLIENT_MAP, PROFILING_DATA, TOPICS};
 use dashmap::DashMap;
 use quinn::SendStream;
 use rand::Rng;
@@ -127,6 +127,9 @@ impl Topic {
                             {
                                 sender.write().await.write_all(&dtg.as_bytes()).await;
                             }
+
+                            increase_profiling_data("Topic::Subscribe");
+                            
                             info!(
                                 "Client {} subscribed to topic {}.",
                                 packet.source, topic_id
@@ -144,6 +147,8 @@ impl Topic {
                             {
                                 sender.write().await.write_all(&dtg.as_bytes()).await;
                             }
+
+                            increase_profiling_data("Topic::Subscribe");
                             
                             error!(
                                 "Client {} tried to subscribe to topic {} but it does not exist and server failed to create it: {}.",
@@ -164,6 +169,8 @@ impl Topic {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Topic::Subscribe");
                     
                     // Send the saved data to the client
                     topic.send_saved_data(packet.source).await;
@@ -188,6 +195,8 @@ impl Topic {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Topic::Unsubscribe");
                     
                     warn!(
                         "Client {} tried to unsubscribe from topic {} but it does not exist.",
@@ -211,6 +220,8 @@ impl Topic {
                     {
                         sender.write().await.write_all(&dtg.as_bytes()).await;
                     }
+
+                    increase_profiling_data("Topic::Unsubscribe");
                     
                     // Check if the topic is empty
                     if remaining_subscribers == 0 {
@@ -277,6 +288,8 @@ impl Topic {
             {
                 sender.write().await.write_all(&dtg.as_bytes()).await;
             }
+
+            increase_profiling_data(&format!("Data::{}", self.id));
         }
     }
 
@@ -302,6 +315,8 @@ impl Topic {
                 s.write_all(&dtg.as_bytes()).await;
                 s.flush();
             }
+
+            increase_profiling_data(&format!("Data::{}", self.id));
         } else {
             error!(
                 "Client {} is not subscribed to topic {}",

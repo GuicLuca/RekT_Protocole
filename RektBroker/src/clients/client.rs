@@ -1,13 +1,8 @@
-use std::fmt::{Display, Formatter};
-use std::net::IpAddr;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
 use crate::errors::Error;
 use crate::errors::Error::InvalidDatagramType;
 use crate::prelude::Result;
 use crate::streams::streams::{RBiStream, RUnreliableStream};
-use crate::{CLIENT_MAP, CONFIG, PACKET_BUFFER, WORKER_CONDVAR};
+use crate::{increase_profiling_data, CLIENT_MAP, CONFIG, PACKET_BUFFER, PROFILING_DATA, WORKER_CONDVAR};
 use quinn::{Connection, RecvStream, SendStream};
 use rand::random;
 use rekt_lib::datagrams::connect_requests::DtgConnectAck;
@@ -23,6 +18,10 @@ use rekt_lib::enums::datagram_type::{display_datagram_type, DatagramType};
 use rekt_lib::enums::end_connection_reason::EndConnexionReason;
 use rekt_lib::libs::types::ClientId;
 use rekt_lib::libs::utils::get_u16_at_pos;
+use std::fmt::{Display, Formatter};
+use std::net::IpAddr;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tokio::time::Instant;
@@ -113,7 +112,7 @@ impl Client {
             }
             // 1 - set the connection status to disconnected
             *read_client.status.write().await = ConnectionStatus::Disconnecting;
-            
+
             // 3 - Send a shutdown datagram to the client
             if read_client.sender.is_none() {
                 error!("Client {} has no sender stream in disconnect!", id);
@@ -124,6 +123,9 @@ impl Client {
                     sender.write_all(&dtg.as_bytes()).await?;
                     // Indicate that we will not send more data
                     sender.flush().await?;
+
+                    increase_profiling_data("Client::Disconnect");
+
                     // Give a fair amount of time to the client to read the datagram
                     tokio::time::sleep(Duration::from_millis(5)).await;
                     sender.finish();
@@ -294,7 +296,7 @@ impl Client {
             // Update the life signe of the client because he sent a datagram (whatever the type)
 
             self.update_life_signe().await;
-            
+
             // TODO: remove this line when the client is fully implemented
             info!(
                 "Client {} sent a datagram of type \"{}\"",
@@ -376,6 +378,8 @@ impl Client {
                     let heartbeat_datagram = DtgHeartbeat::new();
                     let mut sender = arc_sender.write().await;
                     sender.write_all(&heartbeat_datagram.as_bytes()).await?;
+
+                    increase_profiling_data("Client::Heartbeat");
                 } else {
                     // nothing to do here, the client is still alive
                     trace!("Heartbeat datagram received from client {}", connection_id);
@@ -389,6 +393,8 @@ impl Client {
                     {
                         let mut sender = arc_sender.write().await;
                         sender.write_all(&pong_datagram.as_bytes()).await?;
+
+                        increase_profiling_data("Client::PingPong");
                     }
                 } else {
                     // handle pong datagram locally
@@ -408,6 +414,8 @@ impl Client {
                 let mut sender = arc_sender.write().await;
                 sender.write_all(&connect_ack_dtg.as_bytes()).await?;
                 info!("Client {} has now the status \"Connected\".", connection_id);
+
+                increase_profiling_data("Client::Connect");
             }
             _ => {
                 // if this case is reached, the datagram type is not a direct response type

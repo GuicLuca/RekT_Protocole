@@ -19,8 +19,10 @@ use crate::clients::client::{Client, ConnectionId, Packet};
 use crate::config::Config;
 use crate::errors::Error;
 use crate::errors::Error::Initialization;
+use crate::object::Object;
 use crate::prelude::{ClientMap, Result};
 use crate::streams::streams::RBiStream;
+use crate::topics::Topic;
 use crossbeam_queue::ArrayQueue;
 use dashmap::mapref::one::RefMut;
 use dashmap::DashMap;
@@ -29,10 +31,13 @@ use local_ip_address::local_ip;
 use parking_lot::{Condvar, Mutex};
 use quinn::rustls::pki_types::pem::PemObject;
 use quinn::rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use quinn::{Connecting, Connection, ConnectionError, Endpoint, ServerConfig};
+use quinn::{Accept, Connecting, Connection, ConnectionError, Endpoint, ServerConfig};
 use rcgen::CertifiedKey;
+use rekt_lib::datagrams::data_request::DtgData;
+use rekt_lib::datagrams::miscellaneous_requests::DtgServerStatusACK;
 use rekt_lib::enums::datagram_type::DatagramType;
 use rekt_lib::enums::end_connection_reason::EndConnexionReason;
+use rekt_lib::libs::types::{ClientId, ObjectId, TopicId};
 use rustls::{Certificate, PrivateKey};
 use serde::Serialize;
 use std::io::Bytes;
@@ -42,27 +47,22 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::sleep;
-use rekt_lib::datagrams::data_request::DtgData;
-use rekt_lib::datagrams::miscellaneous_requests::DtgServerStatusACK;
-use rekt_lib::libs::types::{ClientId, ObjectId, TopicId};
 use tokio::io::AsyncWriteExt;
 use tokio::net::UdpSocket;
-use tokio::sync::RwLock;
+use tokio::sync::{oneshot, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Sleep;
 use tokio::{join, task, try_join};
 use tracing::Instrument;
-use crate::object::Object;
-use crate::topics::Topic;
 
 mod clients;
 mod config;
 mod errors;
 mod job_system;
+mod object;
 mod prelude;
 mod streams;
 mod topics;
-mod object;
 
 lazy_static! {
     // Global config and general purpose vars
@@ -75,10 +75,32 @@ lazy_static! {
     // Job system vars
     static ref PACKET_BUFFER: Arc<ArrayQueue<Packet>> = Arc::new(ArrayQueue::new(CONFIG.packet_buffer_size.into()));
     static ref WORKER_CONDVAR: Arc<(Mutex<bool>, Condvar)> = Arc::new((Mutex::new(false), Condvar::new()));
-    
+
     // Data related server
     static ref TOPICS: Arc<DashMap<TopicId, Topic>> = Arc::new(DashMap::new());
     static ref OBJECTS: Arc<DashMap<ObjectId, Object>> = Arc::new(DashMap::new());
+
+    // Profiling vars
+    static ref PROFILING_DATA: Arc<DashMap<String, u32>> = Arc::new(DashMap::new());
+    static ref EXP_CODE: String = {
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() < 2 { // 1 = program name, 2 = exp code
+            panic!("Usage: {} <exp_code>", args[0]);
+        }
+
+        args[1].clone()
+    };
+}
+
+
+// #[cfg(feature = "profiling")]
+fn increase_profiling_data(key: &str) {
+    if PROFILING_DATA.contains_key(key) {
+        let mut value = PROFILING_DATA.get_mut(key).unwrap();
+        *value += 1;
+    } else {
+        PROFILING_DATA.insert(key.to_string(), 1);
+    }
 }
 
 #[tokio::main]
@@ -98,17 +120,22 @@ async fn main() {
     // ----------------------------------------------------
     info!("Starting the server :");
 
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+
     let endpoint_handle = tokio::spawn(async {
-        open_endpoint().await;
+        open_endpoint(shutdown_rx).await;
     });
     let job_system_handle = tokio::spawn(async {
-        job_system::init_job_system().await;
+        job_system::init_job_system(shutdown_tx).await;
     });
 
     let handles_results = try_join!(endpoint_handle, job_system_handle);
 
     match handles_results {
-        Ok(_) => {}
+        Ok(_) => {
+            info!(">>> Server stopped successfully.");
+            info!(">>> All tasks ended successfully.");
+        }
         Err(err) => {
             error!("{}", err);
             error!(">>> Server stopping!");
@@ -136,7 +163,7 @@ fn init_quic_connection() -> Result<(ServerConfig)> {
  *
  * @return Result<()> : Raise the error if the server fail a task.
  */
-async fn open_endpoint() -> Result<()> {
+async fn open_endpoint(mut shutdown_rx: oneshot::Receiver<()>) -> Result<()> {
     let mut quic_config = match init_quic_connection() {
         Ok(quic_config) => {
             info!("- QUIC connection setup successfully.");
@@ -166,25 +193,40 @@ async fn open_endpoint() -> Result<()> {
     let endpoint = Endpoint::server(quic_config, addr)?;
 
     // Start iterating over incoming connections.
-    while let Some(incoming) = endpoint.accept().await {
-        let connecting = match incoming.accept() {
-            Ok(conn) => conn,
-            Err(e) => {
-                error!("Connection failed : {}", e);
-                continue;
-            }
-        };
-        let connection_process = handle_connection(connecting);
-        tokio::spawn(async move {
-            match connection_process.await{
-                Ok(id) => {
-                    info!("Connection handler for {id} has ended successfully.");
+    'ServerHandler: while SERVER_IS_RUNNING.load(Ordering::Acquire) {
+        
+        tokio::select! {
+            // Accept incoming connections
+            accepted = endpoint.accept() => {
+                if let Some(incoming) = accepted {
+                    let connecting = match incoming.accept() {
+                        Ok(conn) => conn,
+                        Err(e) => {
+                            error!("Connection failed : {}", e);
+                            continue;
+                        }
+                    };
+                    let connection_process = handle_connection(connecting);
+                    tokio::spawn(async move {
+                        match connection_process.await{
+                            Ok(id) => {
+                                info!("Connection handler for {id} has ended successfully.");
+                            }
+                            Err(e) => {
+                                error!("A connection handler has ended with error : {}", e);
+                            }
+                        }
+                    });
+                }else {
+                    break 'ServerHandler;
                 }
-                Err(e) => {
-                    error!("A connection handler has ended with error : {}", e);
-                }
             }
-        });
+            _ = &mut shutdown_rx => {
+                info!("Stopping the endpoint ...");
+                endpoint.close(0u32.into(), b"Server shutting down");
+                break 'ServerHandler;
+            }
+        }
     }
 
     Ok(())
@@ -324,12 +366,14 @@ async fn handle_datagram(packet: Packet) {
         DatagramType::ServerStatus => {
             // ClientID::MAX is the maximum amount of client connected with valid ID.
             let dtg = DtgServerStatusACK::new(CLIENT_MAP.len() as ClientId);
-            
+
             // send the datagram to the client
             {
                 let mut sender = sender.write().await;
-                let send_result = sender.write_all(&dtg.as_bytes()).await; 
+                let send_result = sender.write_all(&dtg.as_bytes()).await;
             }
+
+            increase_profiling_data("ServerStatus");
         }
         DatagramType::TopicRequest => {
             Topic::handle_topic_request(packet).await;
@@ -338,15 +382,17 @@ async fn handle_datagram(packet: Packet) {
             Object::handle_object_request(packet).await;
         }
         DatagramType::Data => {
-            let dtg = match DtgData::try_from(packet.datagram.as_slice())
-            {
-                Ok(dtg) => {dtg}
+            let dtg = match DtgData::try_from(packet.datagram.as_slice()) {
+                Ok(dtg) => dtg,
                 Err(e) => {
-                    error!("Error while converting datagram from {} to DtgData: {}", packet.source, e);
+                    error!(
+                        "Error while converting datagram from {} to DtgData: {}",
+                        packet.source, e
+                    );
                     return;
                 }
             };
-            
+
             // 1- find the topic
             let mut topic = match TOPICS.get_mut(&dtg.topic_id) {
                 Some(topic) => topic,
@@ -355,14 +401,17 @@ async fn handle_datagram(packet: Packet) {
                         "Client {} tried to send data on an unknown topic {}.",
                         packet.source, dtg.topic_id
                     );
-                    
+
                     // Here some feedbacks would be nice for the client in a real implementation
                     return;
                 }
             };
-            
+
             // 2- publish the data on it avoiding the source of the update
-            topic.value_mut().publish(&dtg.payload, Some(packet.source)).await;
+            topic
+                .value_mut()
+                .publish(&dtg.payload, Some(packet.source))
+                .await;
         }
 
         // Following cases are authorized to be sent in the job system but not implemented
